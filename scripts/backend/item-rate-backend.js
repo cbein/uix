@@ -1,11 +1,11 @@
 /** @type {ItemRateBackend} */
 module.exports = {
-  tickerPerSample: 60,
+  ticksPerSample: 10,
   timer: 0,
+  currentCore: null, //needed to handle reset moving between sectors
   previousItems: {},
   knownItems: {},
   itemStats: [],
-  hasPrevious: false,
 
   start: function() {
     const itemRateBackend = this;
@@ -16,41 +16,75 @@ module.exports = {
         return;
       }
 
+      const core = itemRateBackend.getCore();
+
+      if (core == null) {
+        itemRateBackend.reset();
+        return;
+      }
+
+      if (itemRateBackend.currentCore !== core) {
+        itemRateBackend.reset();
+        itemRateBackend.currentCore = core;
+        itemRateBackend.initializeCore(core);
+      }
+
       itemRateBackend.timer += Time.delta;
 
-      if (itemRateBackend.timer < itemRateBackend.tickerPerSample) {
+      if (itemRateBackend.timer < itemRateBackend.ticksPerSample) {
         return;
       }
 
       const elapsedSeconds = itemRateBackend.timer / 60;
       itemRateBackend.timer = 0;
-      itemRateBackend.sample(elapsedSeconds);
+      itemRateBackend.sample(core, elapsedSeconds);
     });
   },
 
   reset: function() {
     const itemRateBackend = this;
     itemRateBackend.timer = 0;
+    itemRateBackend.currentCore = null;
     itemRateBackend.previousItems = {};
     itemRateBackend.knownItems = {};
     itemRateBackend.itemStats = [];
-    itemRateBackend.hasPrevious = false;
   },
 
-  sample: function(elapsedSeconds) {
-    const itemRateBackend = this;
-
+  getCore: function() {
     if (Vars.player == null || Vars.player.team() == null) {
-      itemRateBackend.reset();
-      return;
+      return null;
     }
 
-    const core = Vars.player.team().core();
+    return Vars.player.team().core();
+  },
 
-    if (core == null) {
-      itemRateBackend.reset();
-      return;
-    }
+  initializeCore: function(core) {
+    const itemRateBackend = this;
+    const current = {};
+    const itemStats = [];
+
+    Vars.content.items().each(function(item) {
+      const amount = core.items.get(item);
+
+      if (amount === 0) {
+        return;
+      }
+
+      itemRateBackend.knownItems[item.name] = true;
+      current[item.name] = amount;
+      itemStats.push({
+        item: item,
+        amount: amount,
+        rate: 0
+      });
+    });
+
+    itemRateBackend.previousItems = current;
+    itemRateBackend.itemStats = itemStats;
+  },
+
+  sample: function(core, elapsedSeconds) {
+    const itemRateBackend = this;
 
     const current = {};
     const itemStats = [];
@@ -76,20 +110,14 @@ module.exports = {
 
       current[item.name] = amount;
 
-      if (itemRateBackend.hasPrevious) {
-        itemStats.push({
-          item: item,
-          amount: amount,
-          rate: rate
-        });
-      }
+      itemStats.push({
+        item: item,
+        amount: amount,
+        rate: rate
+      });
     });
 
     itemRateBackend.previousItems = current;
     itemRateBackend.itemStats = itemStats;
-
-    if (!itemRateBackend.hasPrevious) {
-      itemRateBackend.hasPrevious = true;
-    }
   }
 };
