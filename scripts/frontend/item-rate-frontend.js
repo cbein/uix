@@ -3,16 +3,22 @@ module.exports = {
   config: {
     scale: 1,
     topMargin: 240,
-    barWidth: 128,
+    barWidth: 168,
     barHeight: 36,
     barSpacing: 4,
     iconSize: 24,
     iconRightPadding: 8,
     rateTextMinWidth: 64,
+    modeButtonWidth: 48,
+    modeButtonHeight: 28,
+    modeButtonSpacing: 4,
+    fullTextMinWidth: 32,
     highPositiveColor: Color.valueOf("3399ff")
   },
   rateTable: null,
+  barsTable: null,
   itemRateBackend: null,
+  rateMode: "second",
 
   start: function(itemRateBackend) {
     const itemRateFrontend = this;
@@ -31,6 +37,10 @@ module.exports = {
     itemRateFrontend.rateTable.top().right();
     itemRateFrontend.rateTable.marginTop(itemRateFrontend.scaled(itemRateFrontend.config.topMargin));
 
+    itemRateFrontend.addRateModeButtons(itemRateFrontend.rateTable);
+    itemRateFrontend.barsTable = new Table();
+    itemRateFrontend.rateTable.add(itemRateFrontend.barsTable).row();
+
     Vars.ui.hudGroup.addChild(itemRateFrontend.rateTable);
 
     Events.run(Trigger.update, function() {
@@ -40,18 +50,44 @@ module.exports = {
 
   rebuild: function() {
     const itemRateFrontend = this;
-    const rateTable = itemRateFrontend.rateTable;
+    const barsTable = itemRateFrontend.barsTable;
     const itemRateBackend = itemRateFrontend.itemRateBackend;
 
-    rateTable.clear();
+    barsTable.clear();
 
-    if (!Vars.state.isGame() || itemRateBackend.itemStats.length === 0) {
+    if (!Vars.state.isGame()) {
+      return;
+    }
+
+    if (itemRateBackend.itemStats.length === 0) {
       return;
     }
 
     for (let i = 0; i < itemRateBackend.itemStats.length; i++) {
-      itemRateFrontend.addRateBar(rateTable, itemRateBackend.itemStats[i]);
+      itemRateFrontend.addRateBar(barsTable, itemRateBackend.itemStats[i]);
     }
+  },
+
+  addRateModeButtons: function(rateTable) {
+    const itemRateFrontend = this;
+    const config = itemRateFrontend.config;
+
+    rateTable.table(Tex.clear, function(buttonTable) {
+      buttonTable.button("/s", function() {
+        itemRateFrontend.rateMode = "second";
+      })
+        .width(itemRateFrontend.scaled(config.modeButtonWidth))
+        .height(itemRateFrontend.scaled(config.modeButtonHeight))
+        .padRight(itemRateFrontend.scaled(config.modeButtonSpacing));
+
+      buttonTable.button("/m", function() {
+        itemRateFrontend.rateMode = "minute";
+      })
+        .width(itemRateFrontend.scaled(config.modeButtonWidth))
+        .height(itemRateFrontend.scaled(config.modeButtonHeight));
+    })
+      .padBottom(itemRateFrontend.scaled(config.barSpacing))
+      .row();
   },
 
   addRateBar: function(rateTable, itemStats) {
@@ -63,10 +99,18 @@ module.exports = {
         .size(itemRateFrontend.scaled(config.iconSize))
         .padRight(itemRateFrontend.scaled(config.iconRightPadding));
 
-      bar.add(itemRateFrontend.formatRate(itemStats.rate))
-        .color(itemRateFrontend.getRateColor(itemStats.rate))
+      bar.add(itemRateFrontend.formatRate(itemStats))
+        .color(itemRateFrontend.getRateColor(itemStats))
         .minWidth(itemRateFrontend.scaled(config.rateTextMinWidth))
         .right();
+
+      if (itemStats.isFull) {
+        bar.add("FULL")
+          .color(Color.scarlet)
+          .minWidth(itemRateFrontend.scaled(config.fullTextMinWidth))
+          .right()
+          .padLeft(itemRateFrontend.scaled(config.iconRightPadding));
+      }
     })
       .height(itemRateFrontend.scaled(config.barHeight))
       .width(itemRateFrontend.scaled(config.barWidth))
@@ -78,20 +122,23 @@ module.exports = {
     return value * this.config.scale;
   },
 
-  getRateColor: function(rate) {
-    if (rate >= 100) {
+  getRateColor: function(itemStats) {
+    const rate = this.getDisplayRate(itemStats);
+    const thresholdScale = this.getThresholdScale();
+
+    if (rate >= 100 * thresholdScale) {
       return this.config.highPositiveColor;
     }
 
-    if (rate >= 10) {
+    if (rate >= 10 * thresholdScale) {
       return Color.green;
     }
 
-    if (rate <= -100) {
+    if (rate <= -100 * thresholdScale) {
       return Color.red;
     }
 
-    if (rate <= -10) {
+    if (rate <= -10 * thresholdScale) {
       return Color.orange;
     }
 
@@ -106,17 +153,50 @@ module.exports = {
     return Color.gray;
   },
 
-  formatRate: function(rate) {
-    let rounded = Math.round(rate);
+  getThresholdScale: function() {
+    if (this.rateMode === "minute") {
+      return 60;
+    }
 
-    if (rate > -1 && rate < 1 && rate !== 0) {
-      rounded = Math.round(rate * 10) / 10;
+    return 1;
+  },
+
+  formatRate: function(itemStats) {
+    const displayRate = this.getDisplayRate(itemStats);
+    let rounded = Math.round(displayRate);
+
+    if (displayRate > -1 && displayRate < 1 && displayRate !== 0) {
+      rounded = Math.round(displayRate * 10) / 10;
     }
 
     if (rounded > 0) {
-      return "+" + rounded + "/s";
+      return "+" + rounded + this.getRateUnit();
     }
 
-    return rounded + "/s";
+    return rounded + this.getRateUnit();
+  },
+
+  getDisplayRate: function(itemStats) {
+    if (this.rateMode === "minute") {
+      if (itemStats.isFull) {
+        return itemStats.incomingRatePerMinute;
+      }
+
+      return itemStats.netRatePerMinute;
+    }
+
+    if (itemStats.isFull) {
+      return itemStats.incomingRatePerSecond;
+    }
+
+    return itemStats.netRatePerSecond;
+  },
+
+  getRateUnit: function() {
+    if (this.rateMode === "minute") {
+      return "/m";
+    }
+
+    return "/s";
   }
 };
