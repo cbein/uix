@@ -1,5 +1,5 @@
 Log.info("UIX mod loaded.");
 
-const ResourceRateBackend = require("backend/resource-rate-backend");
+const ItemRateBackend = require("backend/item-rate-backend");
 
-ResourceRateBackend.start();
+ItemRateBackend.start();
