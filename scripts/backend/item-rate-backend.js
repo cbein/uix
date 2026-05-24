@@ -1,9 +1,11 @@
 /** @type {ItemRateBackend} */
 module.exports = {
-  ticksPerSample: 10,
+  ticksPerSample: 2,
   timer: 0,
   currentCore: null, //needed to handle reset moving between sectors
   previousItems: {},
+  rateSamples: {},
+  maxRateSamples: 15,
   knownItems: {},
   itemStats: [],
 
@@ -46,6 +48,7 @@ module.exports = {
     itemRateBackend.timer = 0;
     itemRateBackend.currentCore = null;
     itemRateBackend.previousItems = {};
+    itemRateBackend.rateSamples = {};
     itemRateBackend.knownItems = {};
     itemRateBackend.itemStats = [];
   },
@@ -72,6 +75,7 @@ module.exports = {
 
       itemRateBackend.knownItems[item.name] = true;
       current[item.name] = amount;
+      itemRateBackend.rateSamples[item.name] = [0];
       itemStats.push({
         item: item,
         amount: amount,
@@ -107,17 +111,42 @@ module.exports = {
       }
 
       const rate = (amount - previousAmount) / elapsedSeconds;
+      const averageRate = itemRateBackend.addRateSample(item.name, rate);
 
       current[item.name] = amount;
 
       itemStats.push({
         item: item,
         amount: amount,
-        rate: rate
+        rate: averageRate
       });
     });
 
     itemRateBackend.previousItems = current;
     itemRateBackend.itemStats = itemStats;
+  },
+
+  addRateSample: function(itemName, rate) {
+    const itemRateBackend = this;
+    let samples = itemRateBackend.rateSamples[itemName];
+
+    if (samples === undefined) {
+      samples = [];
+      itemRateBackend.rateSamples[itemName] = samples;
+    }
+
+    samples.push(rate);
+
+    if (samples.length > itemRateBackend.maxRateSamples) {
+      samples.shift();
+    }
+
+    let total = 0;
+
+    for (let i = 0; i < samples.length; i++) {
+      total += samples[i];
+    }
+
+    return total / samples.length;
   }
 };

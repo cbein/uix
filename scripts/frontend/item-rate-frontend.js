@@ -8,7 +8,8 @@ module.exports = {
     barSpacing: 4,
     iconSize: 24,
     iconRightPadding: 8,
-    rateTextMinWidth: 64
+    rateTextMinWidth: 64,
+    highPositiveColor: Color.valueOf("3399ff")
   },
   rateTable: null,
   itemRateBackend: null,
@@ -63,6 +64,7 @@ module.exports = {
         .padRight(itemRateFrontend.scaled(config.iconRightPadding));
 
       bar.add(itemRateFrontend.formatRate(itemStats.rate))
+        .color(itemRateFrontend.getRateColor(itemStats.rate))
         .minWidth(itemRateFrontend.scaled(config.rateTextMinWidth))
         .right();
     })
@@ -76,8 +78,40 @@ module.exports = {
     return value * this.config.scale;
   },
 
+  getRateColor: function(rate) {
+    if (rate >= 100) {
+      return this.config.highPositiveColor;
+    }
+
+    if (rate >= 10) {
+      return Color.green;
+    }
+
+    if (rate <= -100) {
+      return Color.red;
+    }
+
+    if (rate <= -10) {
+      return Color.orange;
+    }
+
+    if (rate < 0) {
+      return Color.yellow;
+    }
+
+    if (rate > 0) {
+      return Color.white;
+    }
+
+    return Color.gray;
+  },
+
   formatRate: function(rate) {
-    const rounded = Math.round(rate * 10) / 10;
+    let rounded = Math.round(rate);
+
+    if (rate > -1 && rate < 1 && rate !== 0) {
+      rounded = Math.round(rate * 10) / 10;
+    }
 
     if (rounded > 0) {
       return "+" + rounded + "/s";
