@@ -3,7 +3,8 @@ module.exports = {
   tickerPerSample: 60,
   timer: 0,
   previousItems: {},
-  rates: [],
+  knownItems: {},
+  itemStats: [],
   hasPrevious: false,
 
   start: function() {
@@ -31,7 +32,8 @@ module.exports = {
     const itemRateBackend = this;
     itemRateBackend.timer = 0;
     itemRateBackend.previousItems = {};
-    itemRateBackend.rates = [];
+    itemRateBackend.knownItems = {};
+    itemRateBackend.itemStats = [];
     itemRateBackend.hasPrevious = false;
   },
 
@@ -51,7 +53,7 @@ module.exports = {
     }
 
     const current = {};
-    const rates = [];
+    const itemStats = [];
 
     Vars.content.items().each(function(item) {
       const amount = core.items.get(item);
@@ -62,12 +64,20 @@ module.exports = {
         previousAmount = 0;
       }
 
+      if (amount > 0) {
+        itemRateBackend.knownItems[item.name] = true;
+      }
+
+      if (amount === 0 && !itemRateBackend.knownItems[item.name]) {
+        return;
+      }
+
       const rate = (amount - previousAmount) / elapsedSeconds;
 
       current[item.name] = amount;
 
       if (itemRateBackend.hasPrevious) {
-        rates.push({
+        itemStats.push({
           item: item,
           amount: amount,
           rate: rate
@@ -76,7 +86,7 @@ module.exports = {
     });
 
     itemRateBackend.previousItems = current;
-    itemRateBackend.rates = rates;
+    itemRateBackend.itemStats = itemStats;
 
     if (!itemRateBackend.hasPrevious) {
       itemRateBackend.hasPrevious = true;
