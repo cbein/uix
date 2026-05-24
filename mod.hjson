@@ -1,0 +1,7 @@
+name: uix
+displayName: UIX
+author: cBEiN
+description: A mod improving the UI.
+version: "0.1.0"
+minGameVersion: 157
+hidden: true

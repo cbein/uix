@@ -1,2 +1,3 @@
-# uix
-A simple Mindustry mod improveming the UI.
+# UIX
+
+A Mindustry UI mod.
