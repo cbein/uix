@@ -40,8 +40,6 @@ module.exports = {
       return;
     }
 
-    Vars.player.
-
     const core = Vars.player.team().core();
 
     if (core == null) {
