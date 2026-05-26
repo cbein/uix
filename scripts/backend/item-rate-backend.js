@@ -3,12 +3,11 @@ module.exports = {
   ticksPerSample: 2,
   timer: 0,
   currentCore: null, //needed to handle reset moving between sectors
-  previousItems: {},
-  previousCoreItemCounts: {},
-  rateSamples: {},
-  secondAverageSeconds: 0.5,
-  minuteAverageSeconds: 10,
-  knownItems: {},
+  previousStoredAmounts: {},
+  rateHistory: {},
+  perSecondWindow: 0.5, // seconds of history used for /s display
+  perMinuteWindow: 10, // seconds of history used for /m display
+  itemsSeenInCore: {},
   itemStats: [],
 
   start: function() {
@@ -49,10 +48,9 @@ module.exports = {
     const itemRateBackend = this;
     itemRateBackend.timer = 0;
     itemRateBackend.currentCore = null;
-    itemRateBackend.previousItems = {};
-    itemRateBackend.previousCoreItemCounts = {};
-    itemRateBackend.rateSamples = {};
-    itemRateBackend.knownItems = {};
+    itemRateBackend.previousStoredAmounts = {};
+    itemRateBackend.rateHistory = {};
+    itemRateBackend.itemsSeenInCore = {};
     itemRateBackend.itemStats = [];
   },
 
@@ -66,155 +64,89 @@ module.exports = {
 
   initializeCore: function(core) {
     const itemRateBackend = this;
-    const current = {};
-    const currentCoreItemCounts = {};
+    const currentStoredAmounts = {};
     const itemStats = [];
     const itemCapacity = core.block.itemCapacity;
 
     Vars.content.items().each(function(item) {
       const amount = core.items.get(item);
-      const coreItemCount = itemRateBackend.getCoreItemCount(item);
 
       if (amount === 0) {
         return;
       }
 
-      itemRateBackend.knownItems[item.name] = true;
-      current[item.name] = amount;
-      currentCoreItemCounts[item.name] = coreItemCount;
-      itemRateBackend.rateSamples[item.name] = itemRateBackend.createRateSampleWindows();
+      itemRateBackend.itemsSeenInCore[item.name] = true;
+      currentStoredAmounts[item.name] = amount;
+      itemRateBackend.rateHistory[item.name] = {second: [], minute: []};
       itemStats.push({
         item: item,
         amount: amount,
         isFull: amount >= itemCapacity,
-        incomingRatePerSecond: 0,
-        incomingRatePerMinute: 0,
-        spendingRatePerSecond: 0,
-        spendingRatePerMinute: 0,
         netRatePerSecond: 0,
         netRatePerMinute: 0
       });
     });
 
-    itemRateBackend.previousItems = current;
-    itemRateBackend.previousCoreItemCounts = currentCoreItemCounts;
+    itemRateBackend.previousStoredAmounts = currentStoredAmounts;
     itemRateBackend.itemStats = itemStats;
   },
 
   sample: function(core, elapsedSeconds) {
     const itemRateBackend = this;
 
-    const current = {};
-    const currentCoreItemCounts = {};
+    const currentStoredAmounts = {};
     const itemStats = [];
     const itemCapacity = core.block.itemCapacity;
 
     Vars.content.items().each(function(item) {
       const amount = core.items.get(item);
-      const coreItemCount = itemRateBackend.getCoreItemCount(item);
 
-      let previousAmount = itemRateBackend.previousItems[item.name];
-      let previousCoreItemCount = itemRateBackend.previousCoreItemCounts[item.name];
+      let previousAmount = itemRateBackend.previousStoredAmounts[item.name];
 
+      // if we don't have previous amount, assume equals zero
       if (previousAmount === undefined) {
         previousAmount = 0;
       }
 
-      if (previousCoreItemCount === undefined) {
-        previousCoreItemCount = coreItemCount;
+      // we render rates for all items that has appeared in the core
+      if (amount > 0) {
+        itemRateBackend.itemsSeenInCore[item.name] = true;
       }
 
-      const incomingAmount = coreItemCount - previousCoreItemCount;
-
-      if (amount > 0 || incomingAmount > 0) {
-        itemRateBackend.knownItems[item.name] = true;
-      }
-
-      if (amount === 0 && !itemRateBackend.knownItems[item.name]) {
+      // we skip items that has never been in the core to avoid clutter as there are many irrelevant items
+      if (amount === 0 && !itemRateBackend.itemsSeenInCore[item.name]) {
         return;
       }
 
       const isFull = amount >= itemCapacity;
-      const rates = itemRateBackend.getItemRatesPerSecond(amount, previousAmount, incomingAmount, elapsedSeconds);
-      const averageRates = itemRateBackend.addRateSample(item.name, rates);
+      const rate = (amount - previousAmount) / elapsedSeconds;
+      const averageRates = itemRateBackend.addRateSample(item.name, rate);
 
-      current[item.name] = amount;
-      currentCoreItemCounts[item.name] = coreItemCount;
+      currentStoredAmounts[item.name] = amount;
 
       itemStats.push({
         item: item,
         amount: amount,
         isFull: isFull,
-        incomingRatePerSecond: averageRates.incoming.perSecond,
-        incomingRatePerMinute: averageRates.incoming.perMinute,
-        spendingRatePerSecond: averageRates.spending.perSecond,
-        spendingRatePerMinute: averageRates.spending.perMinute,
-        netRatePerSecond: averageRates.net.perSecond,
-        netRatePerMinute: averageRates.net.perMinute
+        netRatePerSecond: averageRates.perSecond,
+        netRatePerMinute: averageRates.perMinute
       });
     });
 
-    itemRateBackend.previousItems = current;
-    itemRateBackend.previousCoreItemCounts = currentCoreItemCounts;
+    itemRateBackend.previousStoredAmounts = currentStoredAmounts;
     itemRateBackend.itemStats = itemStats;
   },
 
-  getCoreItemCount: function(item) {
-    return Vars.state.stats.coreItemCount.get(item, 0);
-  },
-
-  getItemRatesPerSecond: function(amount, previousAmount, incomingAmount, elapsedSeconds) {
-    const netRate = (amount - previousAmount) / elapsedSeconds;
-    const incomingRate = incomingAmount / elapsedSeconds;
-    const spendingRate = Math.max(0, incomingRate - netRate);
-
-    return {
-      incoming: incomingRate,
-      spending: spendingRate,
-      net: netRate
-    };
-  },
-
-  addRateSample: function(itemName, ratesPerSecond) {
+  addRateSample: function(itemName, ratePerSecond) {
     const itemRateBackend = this;
-    let samplesByWindow = itemRateBackend.rateSamples[itemName];
+    let samplesByWindow = itemRateBackend.rateHistory[itemName];
 
     if (samplesByWindow === undefined) {
-      samplesByWindow = itemRateBackend.createRateSampleWindows();
-      itemRateBackend.rateSamples[itemName] = samplesByWindow;
+      samplesByWindow = {second: [], minute: []};
+      itemRateBackend.rateHistory[itemName] = samplesByWindow;
     }
 
-    return {
-      incoming: itemRateBackend.addRateToWindows(
-        samplesByWindow.incoming,
-        ratesPerSecond.incoming
-      ),
-      spending: itemRateBackend.addRateToWindows(
-        samplesByWindow.spending,
-        ratesPerSecond.spending
-      ),
-      net: itemRateBackend.addRateToWindows(
-        samplesByWindow.net,
-        ratesPerSecond.net
-      )
-    };
-  },
-
-  createRateSampleWindows: function() {
-    return {
-      incoming: {
-        second: [],
-        minute: []
-      },
-      spending: {
-        second: [],
-        minute: []
-      },
-      net: {
-        second: [],
-        minute: []
-      }
-    };
+    return itemRateBackend.addRateToWindows(samplesByWindow, ratePerSecond);
   },
 
   addRateToWindows: function(samplesByWindow, ratePerSecond) {
@@ -224,12 +156,12 @@ module.exports = {
       perSecond: itemRateBackend.addSampleToWindow(
         samplesByWindow.second,
         ratePerSecond,
-        itemRateBackend.getMaxSamples(itemRateBackend.secondAverageSeconds)
+        itemRateBackend.getMaxSamples(itemRateBackend.perSecondWindow)
       ),
       perMinute: itemRateBackend.addSampleToWindow(
         samplesByWindow.minute,
         ratePerSecond * 60,
-        itemRateBackend.getMaxSamples(itemRateBackend.minuteAverageSeconds)
+        itemRateBackend.getMaxSamples(itemRateBackend.perMinuteWindow)
       )
     };
   },
