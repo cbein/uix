@@ -3,13 +3,14 @@ const Common = require("lib/common");
 
 module.exports = {
   ticksPerSecond: 60,
-  ticksPerSample: 2,
+  ticksPerSample: 1,
   timer: 0,
   currentCore: null, //needed to handle reset moving between sectors
   previousStoredAmounts: {},
+  previousSpoofedAmounts: {},
   rateHistory: {},
-  h1LengthSeconds: 0.1, //seconds of history used for /s display
-  h2LengthSeconds: 2, //seconds of history used for /m display
+  h1LengthSeconds: 0.5, //seconds of history used for /s display
+  h2LengthSeconds: 1, //seconds of history used for /m display
   itemsSeenInCore: {},
   itemStats: [],
 
@@ -52,6 +53,7 @@ module.exports = {
     itemRateBackend.timer = 0;
     itemRateBackend.currentCore = null;
     itemRateBackend.previousStoredAmounts = {};
+    itemRateBackend.previousSpoofedAmounts = {};
     itemRateBackend.rateHistory = {};
     itemRateBackend.itemsSeenInCore = {};
     itemRateBackend.itemStats = [];
@@ -68,11 +70,13 @@ module.exports = {
   initializeCore: function(core) {
     const itemRateBackend = this;
     const currentStoredAmounts = {};
+    const currentSpoofedAmounts = {};
     const itemStats = [];
-    const itemCapacity = core.block.itemCapacity;
+    const itemCapacity = core.storageCapacity;
 
     Vars.content.items().each(function(item) {
       const amount = core.items.get(item);
+      const spoofedAmount = itemRateBackend.getSpoofedAmount(item);
 
       if (amount === 0) {
         return;
@@ -80,6 +84,7 @@ module.exports = {
 
       itemRateBackend.itemsSeenInCore[item.name] = true;
       currentStoredAmounts[item.name] = amount;
+      currentSpoofedAmounts[item.name] = spoofedAmount;
 
       //the rate history is used to smoothing where the second and minute windows are used for the per 
       //second and per minute displays, respectively.
@@ -95,6 +100,7 @@ module.exports = {
     });
 
     itemRateBackend.previousStoredAmounts = currentStoredAmounts;
+    itemRateBackend.previousSpoofedAmounts = currentSpoofedAmounts;
     itemRateBackend.itemStats = itemStats;
   },
 
@@ -102,21 +108,28 @@ module.exports = {
     const itemRateBackend = this;
 
     const currentStoredAmounts = {};
+    const currentSpoofedAmounts = {};
     const itemStats = [];
-    const itemCapacity = core.block.itemCapacity;
+    const itemCapacity = core.storageCapacity;
 
     Vars.content.items().each(function(item) {
       const amount = core.items.get(item);
+      const spoofedAmount = itemRateBackend.getSpoofedAmount(item);
 
       let previousAmount = itemRateBackend.previousStoredAmounts[item.name];
+      let previousSpoofedAmount = itemRateBackend.previousSpoofedAmounts[item.name];
 
       //if we don't have previous amount, assume equals zero
       if (previousAmount === undefined) {
         previousAmount = 0;
       }
 
+      if (previousSpoofedAmount === undefined) {
+        previousSpoofedAmount = spoofedAmount;
+      }
+
       //we render rates for all items that has appeared in the core
-      if (amount > 0) {
+      if (amount > 0 || spoofedAmount > previousSpoofedAmount) {
         itemRateBackend.itemsSeenInCore[item.name] = true;
       }
 
@@ -126,10 +139,13 @@ module.exports = {
       }
 
       const isFull = amount >= itemCapacity;
-      const rate = (amount - previousAmount) / elapsedSeconds;
+      const netRate = (amount - previousAmount) / elapsedSeconds;
+      const incomingRate = (spoofedAmount - previousSpoofedAmount) / elapsedSeconds;
+      const rate = isFull ? incomingRate : netRate;
       const averageRates = itemRateBackend.sample(item.name, rate);
 
       currentStoredAmounts[item.name] = amount;
+      currentSpoofedAmounts[item.name] = spoofedAmount;
 
       itemStats.push({
         item: item,
@@ -141,7 +157,12 @@ module.exports = {
     });
 
     itemRateBackend.previousStoredAmounts = currentStoredAmounts;
+    itemRateBackend.previousSpoofedAmounts = currentSpoofedAmounts;
     itemRateBackend.itemStats = itemStats;
+  },
+
+  getSpoofedAmount: function(item) {
+    return Vars.state.stats.coreItemCount.get(item, 0);
   },
 
   sample: function(itemName, rate) {

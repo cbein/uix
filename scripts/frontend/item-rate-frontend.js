@@ -123,6 +123,10 @@ module.exports = {
   },
 
   getRateColor: function(itemStats) {
+    if (itemStats.isFull) {
+      return Color.gray;
+    }
+
     const rate = this.getDisplayRate(itemStats);
     const thresholdScale = this.getThresholdScale();
 
