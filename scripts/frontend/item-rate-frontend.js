@@ -178,15 +178,7 @@ module.exports = {
 
   getDisplayRate: function(itemStats) {
     if (this.rateMode === "minute") {
-      if (itemStats.isFull) {
-        return itemStats.incomingRatePerMinute;
-      }
-
       return itemStats.netRatePerMinute;
-    }
-
-    if (itemStats.isFull) {
-      return itemStats.incomingRatePerSecond;
     }
 
     return itemStats.netRatePerSecond;
