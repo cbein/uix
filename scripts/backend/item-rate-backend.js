@@ -1,12 +1,15 @@
 /** @type {ItemRateBackend} */
+const Common = require("lib/common");
+
 module.exports = {
+  ticksPerSecond: 60,
   ticksPerSample: 2,
   timer: 0,
   currentCore: null, //needed to handle reset moving between sectors
   previousStoredAmounts: {},
   rateHistory: {},
-  perSecondWindow: 0.5, // seconds of history used for /s display
-  perMinuteWindow: 10, // seconds of history used for /m display
+  h1LengthSeconds: 0.1, //seconds of history used for /s display
+  h2LengthSeconds: 2, //seconds of history used for /m display
   itemsSeenInCore: {},
   itemStats: [],
 
@@ -38,9 +41,9 @@ module.exports = {
         return;
       }
 
-      const elapsedSeconds = itemRateBackend.timer / 60;
+      const elapsedSeconds = itemRateBackend.timer / itemRateBackend.ticksPerSecond;
       itemRateBackend.timer = 0;
-      itemRateBackend.sample(core, elapsedSeconds);
+      itemRateBackend.sampleCore(core, elapsedSeconds);
     });
   },
 
@@ -77,7 +80,11 @@ module.exports = {
 
       itemRateBackend.itemsSeenInCore[item.name] = true;
       currentStoredAmounts[item.name] = amount;
-      itemRateBackend.rateHistory[item.name] = {second: [], minute: []};
+
+      //the rate history is used to smoothing where the second and minute windows are used for the per 
+      //second and per minute displays, respectively.
+      itemRateBackend.rateHistory[item.name] = {h1: [], h2: []};
+      
       itemStats.push({
         item: item,
         amount: amount,
@@ -91,7 +98,7 @@ module.exports = {
     itemRateBackend.itemStats = itemStats;
   },
 
-  sample: function(core, elapsedSeconds) {
+  sampleCore: function(core, elapsedSeconds) {
     const itemRateBackend = this;
 
     const currentStoredAmounts = {};
@@ -103,24 +110,24 @@ module.exports = {
 
       let previousAmount = itemRateBackend.previousStoredAmounts[item.name];
 
-      // if we don't have previous amount, assume equals zero
+      //if we don't have previous amount, assume equals zero
       if (previousAmount === undefined) {
         previousAmount = 0;
       }
 
-      // we render rates for all items that has appeared in the core
+      //we render rates for all items that has appeared in the core
       if (amount > 0) {
         itemRateBackend.itemsSeenInCore[item.name] = true;
       }
 
-      // we skip items that has never been in the core to avoid clutter as there are many irrelevant items
+      //we skip items that has never been in the core to avoid clutter
       if (amount === 0 && !itemRateBackend.itemsSeenInCore[item.name]) {
         return;
       }
 
       const isFull = amount >= itemCapacity;
       const rate = (amount - previousAmount) / elapsedSeconds;
-      const averageRates = itemRateBackend.addRateSample(item.name, rate);
+      const averageRates = itemRateBackend.sample(item.name, rate);
 
       currentStoredAmounts[item.name] = amount;
 
@@ -137,60 +144,36 @@ module.exports = {
     itemRateBackend.itemStats = itemStats;
   },
 
-  addRateSample: function(itemName, ratePerSecond) {
+  sample: function(itemName, rate) {
     const itemRateBackend = this;
-    let samplesByWindow = itemRateBackend.rateHistory[itemName];
+    let rateHistory = itemRateBackend.rateHistory[itemName];
 
-    if (samplesByWindow === undefined) {
-      samplesByWindow = {second: [], minute: []};
-      itemRateBackend.rateHistory[itemName] = samplesByWindow;
+    if (rateHistory === undefined) {
+      rateHistory = {h1: [], h2: []};
+      itemRateBackend.rateHistory[itemName] = rateHistory;
     }
 
-    return itemRateBackend.addRateToWindows(samplesByWindow, ratePerSecond);
-  },
+    //the length of sampling window is length*(ticks/s)/(ticks/sample))
+    const lengthToSamples = function(lengthSeconds) {
+      return Math.max(1, Math.round(lengthSeconds * itemRateBackend.ticksPerSecond / itemRateBackend.ticksPerSample));
+    };
+    const h1LengthSamples = lengthToSamples(itemRateBackend.h1LengthSeconds);
+    const h2LengthSamples = lengthToSamples(itemRateBackend.h2LengthSeconds);
 
-  addRateToWindows: function(samplesByWindow, ratePerSecond) {
-    const itemRateBackend = this;
+    rateHistory.h1.push(rate); //h1 is reported as per second in ui
+    rateHistory.h2.push(rate * 60); //h2 is reported as per minute in ui
+
+    if (rateHistory.h1.length > h1LengthSamples) {
+      rateHistory.h1.shift(); //removes first element of array
+    }
+
+    if (rateHistory.h2.length > h2LengthSamples) {
+      rateHistory.h2.shift(); //removes first element of array
+    }
 
     return {
-      perSecond: itemRateBackend.addSampleToWindow(
-        samplesByWindow.second,
-        ratePerSecond,
-        itemRateBackend.getMaxSamples(itemRateBackend.perSecondWindow)
-      ),
-      perMinute: itemRateBackend.addSampleToWindow(
-        samplesByWindow.minute,
-        ratePerSecond * 60,
-        itemRateBackend.getMaxSamples(itemRateBackend.perMinuteWindow)
-      )
+      perSecond: Common.average(rateHistory.h1),
+      perMinute: Common.average(rateHistory.h2)
     };
-  },
-
-  addSampleToWindow: function(samples, rate, maxSamples) {
-    samples.push(rate);
-
-    if (samples.length > maxSamples) {
-      samples.shift();
-    }
-
-    return this.averageSamples(samples);
-  },
-
-  averageSamples: function(samples) {
-    if (samples.length === 0) {
-      return 0;
-    }
-
-    let total = 0;
-
-    for (let i = 0; i < samples.length; i++) {
-      total += samples[i];
-    }
-
-    return total / samples.length;
-  },
-
-  getMaxSamples: function(averageSeconds) {
-    return Math.max(1, Math.round(averageSeconds * 60 / this.ticksPerSample));
   }
 };
