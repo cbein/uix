@@ -53,11 +53,21 @@ module.exports = {
     const amount = Math.abs(rounded);
 
     if (amount >= 1000000) {
-      return sign + Math.round(amount / 1000000) + "mil";
+      return sign + this.formatAbbreviated(amount / 1000000) + "mil";
     }
 
     if (amount >= 1000) {
-      return sign + Math.round(amount / 1000) + "k";
+      return sign + this.formatAbbreviated(amount / 1000) + "k";
+    }
+
+    return "" + rounded;
+  },
+
+  formatAbbreviated: function(value) {
+    const rounded = Math.round(value * 10) / 10;
+
+    if (rounded === Math.round(rounded)) {
+      return "" + Math.round(rounded);
     }
 
     return "" + rounded;

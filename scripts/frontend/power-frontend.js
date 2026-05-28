@@ -6,10 +6,10 @@ module.exports = {
     scale: 1, //size multiplier
     leftMargin: 16, //offset from left
     topMargin: 240, //offset from top
-    panelWidth: 244, //panel width
-    labelWidth: 116, //label column width
-    valueWidth: 104, //value column width
-    rowHeight: 24, //row height
+    iconSize: 20, //row icon size
+    iconRightPadding: 8, //gap after icon
+    valueWidth: 136, //value column width
+    rowHeight: 40, //row height
     powerUnitsPerSecond: 60 //ticks to seconds
   },
   powerBackgroundTable: null,
@@ -63,42 +63,32 @@ module.exports = {
     powerTable.add("Power")
       .color(Color.white)
       .left()
-      .width(powerFrontend.scaled(powerFrontend.config.panelWidth))
+      .width(powerFrontend.scaled(powerFrontend.getRowContentWidth()))
       .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
       .padBottom(powerFrontend.scaled(4))
       .row();
 
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addRow(powerTable, "Networks", Common.formatNumber(summary.networkCount, false), Color.lightGray);
+    powerFrontend.addRow(powerTable, Icon.tree, Common.formatNumber(summary.networkCount, false), Pal.power);
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addPowerRow(powerTable, "Production", summary.totalProduction, Color.green);
+    powerFrontend.addPowerRow(powerTable, Icon.power, summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addPowerRow(powerTable, "Consumption", summary.totalConsumption, Color.orange);
-    powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addPowerRow(powerTable, "Net", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
-    powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addRow(powerTable, "Battery", powerFrontend.formatBattery(summary), Color.lightGray);
-    powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addRow(powerTable, "Satisfaction", Math.round(summary.totalSatisfaction * 100) + "%", Color.lightGray);
+    powerFrontend.addBatteryRow(powerTable, Icon.trello, summary, powerFrontend.getBatteryColor(summary));
   },
 
-  addRow: function(powerTable, label, value, valueColor) {
+  addRow: function(powerTable, icon, value, valueColor) {
     const powerFrontend = this;
 
-    powerFrontend.addCardRow(powerTable, label, valueColor, function(row) {
-      row.add("" + value)
-        .color(valueColor)
-        .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
-        .padLeft(powerFrontend.scaled(8))
-        .right();
+    powerFrontend.addCardRow(powerTable, icon, valueColor, valueColor, function(row) {
+      powerFrontend.addTextValue(row, "" + value, valueColor);
     });
   },
 
-  addPowerRow: function(powerTable, label, value, valueColor) {
+  addPowerRow: function(powerTable, icon, value, valueColor) {
     const powerFrontend = this;
     const power = powerFrontend.formatPower(value);
 
-    powerFrontend.addCardRow(powerTable, label, valueColor, function(row) {
+    powerFrontend.addCardRow(powerTable, icon, valueColor, valueColor, function(row) {
       row.table(Tex.clear, function(valueTable) {
         valueTable.right();
         valueTable.add(power.amount)
@@ -106,27 +96,94 @@ module.exports = {
           .right();
 
         valueTable.add(power.suffix)
-          .color(Color.lightGray)
+          .color(Color.gray)
           .padLeft(powerFrontend.scaled(1))
           .right();
       })
         .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
-        .padLeft(powerFrontend.scaled(8))
         .right();
     });
   },
 
-  addCardRow: function(powerTable, label, accentColor, addValue) {
+  addBatteryRow: function(powerTable, icon, summary, valueColor) {
+    const powerFrontend = this;
+    const battery = powerFrontend.formatBattery(summary);
+
+    powerFrontend.addCardRow(powerTable, icon, valueColor, valueColor, function(row) {
+      row.table(Tex.clear, function(valueTable) {
+        valueTable.right();
+        powerFrontend.addFormattedNumber(valueTable, battery.stored, valueColor);
+        valueTable.add("/")
+          .color(Color.gray)
+          .right();
+        powerFrontend.addFormattedNumber(valueTable, battery.capacity, valueColor);
+      })
+        .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
+        .right();
+    });
+  },
+
+  addFormattedNumber: function(valueTable, formatted, valueColor) {
+    const split = this.splitFormattedNumber(formatted);
+
+    valueTable.add(split.amount)
+      .color(valueColor)
+      .right();
+
+    if (split.suffix !== "") {
+      valueTable.add(split.suffix)
+        .color(Color.gray)
+        .padLeft(this.scaled(1))
+        .right();
+    }
+  },
+
+  splitFormattedNumber: function(formatted) {
+    if (formatted.indexOf("mil") >= 0) {
+      return {
+        amount: formatted.replace("mil", ""),
+        suffix: "mil"
+      };
+    }
+
+    if (formatted.indexOf("k") >= 0) {
+      return {
+        amount: formatted.replace("k", ""),
+        suffix: "k"
+      };
+    }
+
+    return {
+      amount: formatted,
+      suffix: ""
+    };
+  },
+
+  addTextValue: function(row, value, valueColor) {
+    const powerFrontend = this;
+
+    row.table(Tex.clear, function(valueTable) {
+      valueTable.right();
+      valueTable.add(value)
+        .color(valueColor)
+        .right();
+    })
+      .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
+      .right();
+  },
+
+  addCardRow: function(powerTable, icon, iconColor, accentColor, addValue) {
     const powerFrontend = this;
     const accentWidth = powerFrontend.getAccentWidth();
     const rowSpacing = 4;
 
     powerTable.table(Tex.clear, function(row) {
-      row.add(label)
-        .color(Color.lightGray)
-        .width(powerFrontend.scaled(powerFrontend.config.labelWidth))
-        .padRight(powerFrontend.scaled(8))
-        .left();
+      row.left();
+
+      row.image(icon)
+        .size(powerFrontend.scaled(powerFrontend.config.iconSize))
+        .color(iconColor)
+        .padRight(powerFrontend.scaled(powerFrontend.config.iconRightPadding));
 
       addValue(row);
 
@@ -137,7 +194,7 @@ module.exports = {
         .padLeft(powerFrontend.scaled(8));
     })
       .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
-      .width(powerFrontend.scaled(powerFrontend.config.panelWidth))
+      .width(powerFrontend.scaled(powerFrontend.getRowContentWidth()))
       .padBottom(powerFrontend.scaled(rowSpacing))
       .row();
   },
@@ -148,13 +205,23 @@ module.exports = {
 
     backgroundTable.image(Styles.black6)
       .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
-      .width(powerFrontend.scaled(powerFrontend.config.leftMargin + powerFrontend.config.panelWidth))
+      .width(powerFrontend.scaled(powerFrontend.config.leftMargin + powerFrontend.getRowContentWidth()))
       .padBottom(powerFrontend.scaled(rowSpacing))
       .row();
   },
 
   getAccentWidth: function() {
     return 4;
+  },
+
+  getRowContentWidth: function() {
+    const config = this.config;
+
+    return config.iconSize
+      + config.iconRightPadding
+      + config.valueWidth
+      + config.iconRightPadding
+      + this.getAccentWidth();
   },
 
   scaled: function(value) {
@@ -164,38 +231,53 @@ module.exports = {
   formatPower: function(value) {
     const perSecond = value * this.config.powerUnitsPerSecond;
     const formatted = Common.formatNumber(perSecond, false);
-
-    if (formatted.indexOf("mil") >= 0) {
-      return {
-        amount: formatted.replace("mil", ""),
-        suffix: "mil/s"
-      };
-    }
-
-    if (formatted.indexOf("k") >= 0) {
-      return {
-        amount: formatted.replace("k", ""),
-        suffix: "k/s"
-      };
-    }
+    const split = this.splitFormattedNumber(formatted);
 
     return {
-      amount: formatted,
-      suffix: "/s"
+      amount: split.amount,
+      suffix: split.suffix + "/s"
     };
   },
 
   formatBattery: function(summary) {
     if (summary.totalBatteryCapacity <= 0) {
-      return "0%";
+      return {
+        stored: "0",
+        capacity: "0"
+      };
     }
 
-    return Math.round(summary.totalBatteryStored / summary.totalBatteryCapacity * 100) + "%";
+    return {
+      stored: Common.formatNumber(summary.totalBatteryStored, false),
+      capacity: Common.formatNumber(summary.totalBatteryCapacity, false)
+    };
+  },
+
+  getBatteryColor: function(summary) {
+    if (summary.totalBatteryStored <= 0) {
+      return Color.gray;
+    }
+
+    if (summary.totalNet > 0 && summary.totalBatteryStored < summary.totalBatteryCapacity) {
+      return Color.green;
+    }
+
+    if (summary.totalNet < 0) {
+      return Color.red;
+    }
+
+    return Color.white;
   },
 
   getNetColor: function(net) {
-    const perSecond = net * this.config.powerUnitsPerSecond;
+    if (net > 0) {
+      return Color.yellow;
+    }
 
-    return Common.scaledColor(perSecond, 1000, 10000, Color.white);
+    if (net < 0) {
+      return Color.red;
+    }
+
+    return Color.gray;
   }
 };
