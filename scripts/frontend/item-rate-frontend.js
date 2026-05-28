@@ -10,7 +10,7 @@ module.exports = {
     barSpacing: 4, //gap between bars
     iconSize: 20, //item icon size
     iconRightPadding: 8, //gap after icon
-    rateTextWidth: 64, //rate text width
+    rateTextWidth: 72, //rate text width
     modeButtonWidth: 48, //mode button width
     modeButtonHeight: 28, //mode button height
     modeButtonSpacing: 4, //gap between buttons
