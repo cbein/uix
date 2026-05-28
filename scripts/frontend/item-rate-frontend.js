@@ -14,7 +14,7 @@ module.exports = {
     modeButtonWidth: 48, //mode button width
     modeButtonHeight: 28, //mode button height
     modeButtonSpacing: 4, //gap between buttons
-    fullTextMinWidth: 32 //full text width
+    fullTextMinWidth: 48 //full text width
   },
   rateTable: null,
   barsTable: null,
@@ -95,6 +95,13 @@ module.exports = {
     const itemRateFrontend = this;
     const config = itemRateFrontend.config;
 
+    rateTable.add(itemStats.isFull ? "FULL" : "")
+      .color(Color.green)
+      .width(itemRateFrontend.scaled(config.fullTextMinWidth))
+      .right()
+      .padRight(itemRateFrontend.scaled(config.iconRightPadding))
+      .padBottom(itemRateFrontend.scaled(config.barSpacing));
+
     rateTable.table(Tex.button, function(bar) {
       bar.image(itemStats.item.uiIcon)
         .size(itemRateFrontend.scaled(config.iconSize))
@@ -104,14 +111,6 @@ module.exports = {
         .color(itemRateFrontend.getRateColor(itemStats))
         .minWidth(itemRateFrontend.scaled(config.rateTextMinWidth))
         .right();
-
-      if (itemStats.isFull) {
-        bar.add("FULL")
-          .color(Color.scarlet)
-          .minWidth(itemRateFrontend.scaled(config.fullTextMinWidth))
-          .right()
-          .padLeft(itemRateFrontend.scaled(config.iconRightPadding));
-      }
     })
       .height(itemRateFrontend.scaled(config.barHeight))
       .width(itemRateFrontend.scaled(config.barWidth))
