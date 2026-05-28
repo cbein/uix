@@ -73,12 +73,18 @@ module.exports = {
     const barsTable = itemRateFrontend.barsTable;
     const itemRateBackend = itemRateFrontend.itemRateBackend;
 
-    barsBackgroundTable.clear();
-    barsTable.clear();
-
     if (!Vars.state.isGame()) {
+      barsBackgroundTable.clear();
+      barsTable.clear();
       return;
     }
+
+    if (itemRateFrontend.barsTable.hasMouse()) {
+      return;
+    }
+
+    barsBackgroundTable.clear();
+    barsTable.clear();
 
     if (itemRateBackend.itemStats.length === 0) {
       return;
@@ -98,6 +104,7 @@ module.exports = {
 
     rateTable.table(Tex.clear, function(bar) {
       bar.left();
+      bar.touchable = Touchable.enabled;
 
       bar.image(itemStats.item.uiIcon)
         .size(itemRateFrontend.scaled(config.iconSize))
@@ -116,7 +123,8 @@ module.exports = {
     })
       .height(itemRateFrontend.scaled(config.barHeight))
       .width(itemRateFrontend.scaled(itemRateFrontend.getRateCardContentWidth()))
-      .padBottom(itemRateFrontend.scaled(config.barSpacing));
+      .padBottom(itemRateFrontend.scaled(config.barSpacing))
+      .tooltip(itemStats.item.localizedName);
 
     rateTable.add(itemStats.isFull ? "FULL" : "")
       .color(Color.green)

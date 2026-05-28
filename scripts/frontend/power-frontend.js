@@ -56,15 +56,21 @@ module.exports = {
     const powerTable = powerFrontend.powerTable;
     const summary = powerFrontend.powerBackend.powerSummary;
 
-    powerBackgroundTable.clear();
-    powerTable.clear();
-
     if (!Vars.state.isGame() || summary.networkCount === 0) {
+      powerBackgroundTable.clear();
+      powerTable.clear();
       powerFrontend.previousBatteryStored = null;
       powerFrontend.batteryColor = null;
       powerFrontend.batteryColorTimer = 0;
       return;
     }
+
+    if (powerFrontend.powerTable.hasMouse()) {
+      return;
+    }
+
+    powerBackgroundTable.clear();
+    powerTable.clear();
 
     powerTable.add("Power")
       .color(Color.white)
@@ -75,26 +81,26 @@ module.exports = {
       .row();
 
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addRow(powerTable, Icon.tree, Common.formatNumber(summary.networkCount, false), Color.white);
+    powerFrontend.addRow(powerTable, Icon.tree, "Networks", Common.formatNumber(summary.networkCount, false), Color.white);
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addPowerRow(powerTable, Icon.power, summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
+    powerFrontend.addPowerRow(powerTable, Icon.power, "Power", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addBatteryRow(powerTable, Icon.trello, summary, powerFrontend.getBatteryColor(summary));
+    powerFrontend.addBatteryRow(powerTable, Icon.trello, "Stored", summary, powerFrontend.getBatteryColor(summary));
   },
 
-  addRow: function(powerTable, icon, value, valueColor) {
+  addRow: function(powerTable, icon, tooltip, value, valueColor) {
     const powerFrontend = this;
 
-    powerFrontend.addCardRow(powerTable, icon, valueColor, valueColor, function(row) {
+    powerFrontend.addCardRow(powerTable, icon, tooltip, valueColor, valueColor, function(row) {
       powerFrontend.addTextValue(row, "" + value, valueColor);
     });
   },
 
-  addPowerRow: function(powerTable, icon, value, valueColor) {
+  addPowerRow: function(powerTable, icon, tooltip, value, valueColor) {
     const powerFrontend = this;
     const power = powerFrontend.formatPower(value);
 
-    powerFrontend.addCardRow(powerTable, icon, valueColor, valueColor, function(row) {
+    powerFrontend.addCardRow(powerTable, icon, tooltip, valueColor, valueColor, function(row) {
       row.table(Tex.clear, function(valueTable) {
         valueTable.right();
         valueTable.add(power.amount)
@@ -111,11 +117,11 @@ module.exports = {
     });
   },
 
-  addBatteryRow: function(powerTable, icon, summary, valueColor) {
+  addBatteryRow: function(powerTable, icon, tooltip, summary, valueColor) {
     const powerFrontend = this;
     const battery = powerFrontend.formatBattery(summary);
 
-    powerFrontend.addCardRow(powerTable, icon, valueColor, valueColor, function(row) {
+    powerFrontend.addCardRow(powerTable, icon, tooltip, valueColor, valueColor, function(row) {
       row.table(Tex.clear, function(valueTable) {
         valueTable.right();
         powerFrontend.addFormattedNumber(valueTable, battery.stored, valueColor);
@@ -178,13 +184,14 @@ module.exports = {
       .right();
   },
 
-  addCardRow: function(powerTable, icon, iconColor, accentColor, addValue) {
+  addCardRow: function(powerTable, icon, tooltip, iconColor, accentColor, addValue) {
     const powerFrontend = this;
     const accentWidth = powerFrontend.getAccentWidth();
     const rowSpacing = 4;
 
     powerTable.table(Tex.clear, function(row) {
       row.left();
+      row.touchable = Touchable.enabled;
 
       row.image(icon)
         .size(powerFrontend.scaled(powerFrontend.config.iconSize))
@@ -202,6 +209,7 @@ module.exports = {
       .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
       .width(powerFrontend.scaled(powerFrontend.getRowContentWidth()))
       .padBottom(powerFrontend.scaled(rowSpacing))
+      .tooltip(tooltip)
       .row();
   },
 
@@ -238,9 +246,10 @@ module.exports = {
     const perSecond = value * this.config.powerUnitsPerSecond;
     const formatted = Common.formatNumber(perSecond, false);
     const split = this.splitFormattedNumber(formatted);
+    const sign = perSecond > 0 ? "+" : "";
 
     return {
-      amount: split.amount,
+      amount: sign + split.amount,
       suffix: split.suffix + "/s"
     };
   },
