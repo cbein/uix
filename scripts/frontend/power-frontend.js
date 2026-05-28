@@ -1,15 +1,17 @@
 /** @type {PowerFrontend} */
+const Common = require("lib/common");
+
 module.exports = {
   config: {
-    scale: 1,
-    leftMargin: 16,
-    topMargin: 240,
-    panelWidth: 244,
-    labelWidth: 116,
-    valueWidth: 104,
-    rowHeight: 24,
-    padding: 8,
-    powerUnitsPerSecond: 60
+    scale: 1, //size multiplier
+    leftMargin: 16, //offset from left
+    topMargin: 240, //offset from top
+    panelWidth: 244, //panel width
+    labelWidth: 116, //label column width
+    valueWidth: 104, //value column width
+    rowHeight: 24, //row height
+    padding: 8, //space around contents
+    powerUnitsPerSecond: 60 //ticks to seconds
   },
   powerBackend: null,
   powerTable: null,
@@ -66,9 +68,9 @@ module.exports = {
         .row();
 
       powerFrontend.addRow(panel, "Networks", summary.networkCount, Color.lightGray);
-      powerFrontend.addRow(panel, "Production", powerFrontend.formatPower(summary.totalProduction), Color.green);
-      powerFrontend.addRow(panel, "Consumption", powerFrontend.formatPower(summary.totalConsumption), Color.orange);
-      powerFrontend.addRow(panel, "Net", powerFrontend.formatPower(summary.totalNet), powerFrontend.getNetColor(summary.totalNet));
+      powerFrontend.addPowerRow(panel, "Production", summary.totalProduction, Color.green);
+      powerFrontend.addPowerRow(panel, "Consumption", summary.totalConsumption, Color.orange);
+      powerFrontend.addPowerRow(panel, "Net", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
       powerFrontend.addRow(panel, "Battery", powerFrontend.formatBattery(summary), Color.lightGray);
       powerFrontend.addRow(panel, "Satisfaction", Math.round(summary.totalSatisfaction * 100) + "%", Color.lightGray);
 
@@ -98,14 +100,61 @@ module.exports = {
       .row();
   },
 
+  addPowerRow: function(panel, label, value, valueColor) {
+    const powerFrontend = this;
+    const power = powerFrontend.formatPower(value);
+
+    panel.add(label)
+      .color(Color.lightGray)
+      .width(powerFrontend.scaled(powerFrontend.config.labelWidth))
+      .padRight(powerFrontend.scaled(8))
+      .left();
+
+    panel.table(Tex.clear, function(valueTable) {
+      valueTable.right();
+      valueTable.add(power.amount)
+        .color(valueColor)
+        .right();
+
+      valueTable.add(power.suffix)
+        .color(Color.lightGray)
+        .padLeft(powerFrontend.scaled(1))
+        .right();
+    })
+      .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
+      .padLeft(powerFrontend.scaled(8))
+      .right()
+      .row();
+  },
+
   scaled: function(value) {
     return value * this.config.scale;
   },
 
   formatPower: function(value) {
     const perSecond = value * this.config.powerUnitsPerSecond;
+    const rounded = Math.round(perSecond);
+    const sign = rounded < 0 ? "-" : "";
+    const amount = Math.abs(rounded);
 
-    return Math.round(perSecond * 10) / 10 + "/s";
+    if (amount >= 1000000) {
+      return {
+        amount: sign + Math.round(amount / 1000000),
+        suffix: "mil/s"
+      };
+    }
+
+    if (amount >= 1000) {
+      return {
+        amount: sign + Math.round(amount / 1000),
+        suffix: "k/s"
+      };
+    }
+
+    return {
+      amount: sign + amount,
+      suffix: "/s"
+    };
   },
 
   formatBattery: function(summary) {
@@ -117,14 +166,8 @@ module.exports = {
   },
 
   getNetColor: function(net) {
-    if (net > 0) {
-      return Color.green;
-    }
+    const perSecond = net * this.config.powerUnitsPerSecond;
 
-    if (net < 0) {
-      return Color.red;
-    }
-
-    return Color.lightGray;
+    return Common.scaledColor(perSecond, 1000, 10000, Color.white);
   }
 };

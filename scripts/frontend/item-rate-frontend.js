@@ -1,19 +1,20 @@
 /** @type {ItemRateFrontend} */
+const Common = require("lib/common");
+
 module.exports = {
   config: {
-    scale: 1,
-    topMargin: 240,
-    barWidth: 168,
-    barHeight: 36,
-    barSpacing: 4,
-    iconSize: 24,
-    iconRightPadding: 8,
-    rateTextMinWidth: 64,
-    modeButtonWidth: 48,
-    modeButtonHeight: 28,
-    modeButtonSpacing: 4,
-    fullTextMinWidth: 32,
-    highPositiveColor: Color.valueOf("3399ff")
+    scale: 1, //size multiplier
+    topMargin: 240, //offset from top
+    barWidth: 168, //rate bar width
+    barHeight: 36, //rate bar height
+    barSpacing: 4, //gap between bars
+    iconSize: 24, //item icon size
+    iconRightPadding: 8, //gap after icon
+    rateTextMinWidth: 64, //rate text width
+    modeButtonWidth: 48, //mode button width
+    modeButtonHeight: 28, //mode button height
+    modeButtonSpacing: 4, //gap between buttons
+    fullTextMinWidth: 32 //full text width
   },
   rateTable: null,
   barsTable: null,
@@ -130,31 +131,7 @@ module.exports = {
     const rate = this.getDisplayRate(itemStats);
     const thresholdScale = this.getThresholdScale();
 
-    if (rate >= 100 * thresholdScale) {
-      return this.config.highPositiveColor;
-    }
-
-    if (rate >= 10 * thresholdScale) {
-      return Color.green;
-    }
-
-    if (rate <= -100 * thresholdScale) {
-      return Color.red;
-    }
-
-    if (rate <= -10 * thresholdScale) {
-      return Color.orange;
-    }
-
-    if (rate < 0) {
-      return Color.yellow;
-    }
-
-    if (rate > 0) {
-      return Color.white;
-    }
-
-    return Color.gray;
+    return Common.scaledColor(rate, 10 * thresholdScale, 100 * thresholdScale, Color.gray);
   },
 
   getThresholdScale: function() {
