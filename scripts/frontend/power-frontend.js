@@ -6,10 +6,11 @@ module.exports = {
     scale: 1, //size multiplier
     leftMargin: 16, //offset from left
     topMargin: 240, //offset from top
-    iconSize: 20, //row icon size
+    iconSize: 16, //row icon size
     iconRightPadding: 8, //gap after icon
-    valueWidth: 136, //value column width
-    rowHeight: 40, //row height
+    valueWidth: 76, //value column width
+    rowHeight: 24, //row height
+    rowSpacing: 4, //gap between rows
     powerUnitsPerSecond: 60 //ticks to seconds
   },
   powerBackgroundTable: null,
@@ -35,7 +36,7 @@ module.exports = {
     powerFrontend.powerBackgroundTable = new Table();
     powerFrontend.powerBackgroundTable.setFillParent(true);
     powerFrontend.powerBackgroundTable.top().left();
-    powerFrontend.powerBackgroundTable.marginTop(powerFrontend.scaled(config.topMargin + config.rowHeight + 4));
+    powerFrontend.powerBackgroundTable.marginTop(powerFrontend.scaled(config.topMargin + config.rowHeight + config.rowSpacing));
     Vars.ui.hudGroup.addChild(powerFrontend.powerBackgroundTable);
 
     powerFrontend.powerTable = new Table();
@@ -77,15 +78,15 @@ module.exports = {
       .left()
       .width(powerFrontend.scaled(powerFrontend.getRowContentWidth()))
       .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
-      .padBottom(powerFrontend.scaled(4))
+      .padBottom(powerFrontend.scaled(powerFrontend.config.rowSpacing))
       .row();
 
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addRow(powerTable, Icon.tree, "Networks", Common.formatNumber(summary.networkCount, false), Color.white);
+    powerFrontend.addRow(powerTable, Icon.treeSmall, "Networks", Common.formatNumber(summary.networkCount, false), Color.white);
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addPowerRow(powerTable, Icon.power, "Power", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
+    powerFrontend.addPowerRow(powerTable, Icon.powerSmall, "Power", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addBatteryRow(powerTable, Icon.trello, "Stored", summary, powerFrontend.getBatteryColor(summary));
+    powerFrontend.addBatteryRow(powerTable, Icon.trelloSmall, "Stored", summary, powerFrontend.getBatteryColor(summary));
   },
 
   addRow: function(powerTable, icon, tooltip, value, valueColor) {
@@ -124,11 +125,7 @@ module.exports = {
     powerFrontend.addCardRow(powerTable, icon, tooltip, valueColor, valueColor, function(row) {
       row.table(Tex.clear, function(valueTable) {
         valueTable.right();
-        powerFrontend.addFormattedNumber(valueTable, battery.stored, valueColor);
-        valueTable.add("/")
-          .color(Color.gray)
-          .right();
-        powerFrontend.addFormattedNumber(valueTable, battery.capacity, valueColor);
+        powerFrontend.addFormattedNumber(valueTable, battery, valueColor);
       })
         .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
         .right();
@@ -187,40 +184,40 @@ module.exports = {
   addCardRow: function(powerTable, icon, tooltip, iconColor, accentColor, addValue) {
     const powerFrontend = this;
     const accentWidth = powerFrontend.getAccentWidth();
-    const rowSpacing = 4;
+    const config = powerFrontend.config;
 
     powerTable.table(Tex.clear, function(row) {
       row.left();
       row.touchable = Touchable.enabled;
 
       row.image(icon)
-        .size(powerFrontend.scaled(powerFrontend.config.iconSize))
+        .size(powerFrontend.scaled(config.iconSize))
         .color(iconColor)
-        .padRight(powerFrontend.scaled(powerFrontend.config.iconRightPadding));
+        .padRight(powerFrontend.scaled(config.iconRightPadding));
 
       addValue(row);
 
       row.image(Tex.whiteui)
         .color(accentColor)
         .width(powerFrontend.scaled(accentWidth))
-        .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
-        .padLeft(powerFrontend.scaled(8));
+        .height(powerFrontend.scaled(config.rowHeight))
+        .padLeft(powerFrontend.scaled(config.iconRightPadding));
     })
-      .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
+      .height(powerFrontend.scaled(config.rowHeight))
       .width(powerFrontend.scaled(powerFrontend.getRowContentWidth()))
-      .padBottom(powerFrontend.scaled(rowSpacing))
+      .padBottom(powerFrontend.scaled(config.rowSpacing))
       .tooltip(tooltip)
       .row();
   },
 
   addRowBackground: function(backgroundTable) {
     const powerFrontend = this;
-    const rowSpacing = 4;
+    const config = powerFrontend.config;
 
     backgroundTable.image(Styles.black6)
-      .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
-      .width(powerFrontend.scaled(powerFrontend.config.leftMargin + powerFrontend.getRowContentWidth()))
-      .padBottom(powerFrontend.scaled(rowSpacing))
+      .height(powerFrontend.scaled(config.rowHeight))
+      .width(powerFrontend.scaled(config.leftMargin + powerFrontend.getRowContentWidth()))
+      .padBottom(powerFrontend.scaled(config.rowSpacing))
       .row();
   },
 
@@ -256,16 +253,10 @@ module.exports = {
 
   formatBattery: function(summary) {
     if (summary.totalBatteryCapacity <= 0) {
-      return {
-        stored: "0",
-        capacity: "0"
-      };
+      return "0";
     }
 
-    return {
-      stored: Common.formatNumber(summary.totalBatteryStored, false),
-      capacity: Common.formatNumber(summary.totalBatteryCapacity, false)
-    };
+    return Common.formatNumber(summary.totalBatteryStored, false);
   },
 
   getBatteryColor: function(summary) {
