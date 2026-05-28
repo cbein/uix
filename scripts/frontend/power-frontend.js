@@ -146,8 +146,7 @@ module.exports = {
     const powerFrontend = this;
     const rowSpacing = 4;
 
-    backgroundTable.image(Tex.whiteui)
-      .color(Pal.darkishGray)
+    backgroundTable.image(Styles.black6)
       .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
       .width(powerFrontend.scaled(powerFrontend.config.leftMargin + powerFrontend.config.panelWidth))
       .padBottom(powerFrontend.scaled(rowSpacing))

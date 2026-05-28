@@ -152,8 +152,7 @@ module.exports = {
     const itemRateFrontend = this;
     const config = itemRateFrontend.config;
 
-    backgroundTable.image(Tex.whiteui)
-      .color(Pal.darkishGray)
+    backgroundTable.image(Styles.black6)
       .height(itemRateFrontend.scaled(config.barHeight))
       .width(itemRateFrontend.scaled(config.leftMargin + itemRateFrontend.getRateCardContentWidth()))
       .padBottom(itemRateFrontend.scaled(config.barSpacing))
