@@ -10,7 +10,6 @@ module.exports = {
     labelWidth: 116, //label column width
     valueWidth: 104, //value column width
     rowHeight: 24, //row height
-    padding: 8, //space around contents
     powerUnitsPerSecond: 60 //ticks to seconds
   },
   powerBackend: null,
@@ -52,78 +51,78 @@ module.exports = {
       return;
     }
 
-    powerTable.table(Tex.button, function(panel) {
-      panel.defaults().height(powerFrontend.scaled(powerFrontend.config.rowHeight));
-
-      panel.add("")
-        .height(powerFrontend.scaled(powerFrontend.config.padding))
-        .colspan(2)
-        .row();
-
-      panel.add("Power")
-        .color(Color.white)
-        .left()
-        .colspan(2)
-        .padBottom(powerFrontend.scaled(4))
-        .row();
-
-      powerFrontend.addRow(panel, "Networks", Common.formatNumber(summary.networkCount, false), Color.lightGray);
-      powerFrontend.addPowerRow(panel, "Production", summary.totalProduction, Color.green);
-      powerFrontend.addPowerRow(panel, "Consumption", summary.totalConsumption, Color.orange);
-      powerFrontend.addPowerRow(panel, "Net", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
-      powerFrontend.addRow(panel, "Battery", powerFrontend.formatBattery(summary), Color.lightGray);
-      powerFrontend.addRow(panel, "Satisfaction", Math.round(summary.totalSatisfaction * 100) + "%", Color.lightGray);
-
-      panel.add("")
-        .height(powerFrontend.scaled(powerFrontend.config.padding))
-        .colspan(2)
-        .row();
-    })
+    powerTable.add("Power")
+      .color(Color.white)
+      .left()
       .width(powerFrontend.scaled(powerFrontend.config.panelWidth))
-      .pad(powerFrontend.scaled(powerFrontend.config.padding));
+      .padBottom(powerFrontend.scaled(4))
+      .row();
+
+    powerFrontend.addRow(powerTable, "Networks", Common.formatNumber(summary.networkCount, false), Color.lightGray);
+    powerFrontend.addPowerRow(powerTable, "Production", summary.totalProduction, Color.green);
+    powerFrontend.addPowerRow(powerTable, "Consumption", summary.totalConsumption, Color.orange);
+    powerFrontend.addPowerRow(powerTable, "Net", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
+    powerFrontend.addRow(powerTable, "Battery", powerFrontend.formatBattery(summary), Color.lightGray);
+    powerFrontend.addRow(powerTable, "Satisfaction", Math.round(summary.totalSatisfaction * 100) + "%", Color.lightGray);
   },
 
-  addRow: function(panel, label, value, valueColor) {
+  addRow: function(powerTable, label, value, valueColor) {
     const powerFrontend = this;
 
-    panel.add(label)
-      .color(Color.lightGray)
-      .width(powerFrontend.scaled(powerFrontend.config.labelWidth))
-      .padRight(powerFrontend.scaled(8))
-      .left();
-
-    panel.add("" + value)
-      .color(valueColor)
-      .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
-      .padLeft(powerFrontend.scaled(8))
-      .right()
-      .row();
+    powerFrontend.addCardRow(powerTable, label, valueColor, function(row) {
+      row.add("" + value)
+        .color(valueColor)
+        .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
+        .padLeft(powerFrontend.scaled(8))
+        .right();
+    });
   },
 
-  addPowerRow: function(panel, label, value, valueColor) {
+  addPowerRow: function(powerTable, label, value, valueColor) {
     const powerFrontend = this;
     const power = powerFrontend.formatPower(value);
 
-    panel.add(label)
-      .color(Color.lightGray)
-      .width(powerFrontend.scaled(powerFrontend.config.labelWidth))
-      .padRight(powerFrontend.scaled(8))
-      .left();
+    powerFrontend.addCardRow(powerTable, label, valueColor, function(row) {
+      row.table(Tex.clear, function(valueTable) {
+        valueTable.right();
+        valueTable.add(power.amount)
+          .color(valueColor)
+          .right();
 
-    panel.table(Tex.clear, function(valueTable) {
-      valueTable.right();
-      valueTable.add(power.amount)
-        .color(valueColor)
+        valueTable.add(power.suffix)
+          .color(Color.lightGray)
+          .padLeft(powerFrontend.scaled(1))
+          .right();
+      })
+        .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
+        .padLeft(powerFrontend.scaled(8))
         .right();
+    });
+  },
 
-      valueTable.add(power.suffix)
+  addCardRow: function(powerTable, label, accentColor, addValue) {
+    const powerFrontend = this;
+    const accentWidth = 4;
+    const rowSpacing = 4;
+
+    powerTable.table(Tex.clear, function(row) {
+      row.add(label)
         .color(Color.lightGray)
-        .padLeft(powerFrontend.scaled(1))
-        .right();
+        .width(powerFrontend.scaled(powerFrontend.config.labelWidth))
+        .padRight(powerFrontend.scaled(8))
+        .left();
+
+      addValue(row);
+
+      row.image(Tex.whiteui)
+        .color(accentColor)
+        .width(powerFrontend.scaled(accentWidth))
+        .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
+        .padLeft(powerFrontend.scaled(8));
     })
-      .width(powerFrontend.scaled(powerFrontend.config.valueWidth))
-      .padLeft(powerFrontend.scaled(8))
-      .right()
+      .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
+      .width(powerFrontend.scaled(powerFrontend.config.panelWidth))
+      .padBottom(powerFrontend.scaled(rowSpacing))
       .row();
   },
 
