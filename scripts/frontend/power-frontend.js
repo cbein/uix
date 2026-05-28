@@ -15,6 +15,9 @@ module.exports = {
   powerBackgroundTable: null,
   powerBackend: null,
   powerTable: null,
+  previousBatteryStored: null,
+  batteryColor: null,
+  batteryColorTimer: 0,
 
   start: function(powerBackend) {
     const powerFrontend = this;
@@ -57,6 +60,9 @@ module.exports = {
     powerTable.clear();
 
     if (!Vars.state.isGame() || summary.networkCount === 0) {
+      powerFrontend.previousBatteryStored = null;
+      powerFrontend.batteryColor = null;
+      powerFrontend.batteryColorTimer = 0;
       return;
     }
 
@@ -69,7 +75,7 @@ module.exports = {
       .row();
 
     powerFrontend.addRowBackground(powerBackgroundTable);
-    powerFrontend.addRow(powerTable, Icon.tree, Common.formatNumber(summary.networkCount, false), Pal.power);
+    powerFrontend.addRow(powerTable, Icon.tree, Common.formatNumber(summary.networkCount, false), Color.white);
     powerFrontend.addRowBackground(powerBackgroundTable);
     powerFrontend.addPowerRow(powerTable, Icon.power, summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
     powerFrontend.addRowBackground(powerBackgroundTable);
@@ -254,16 +260,32 @@ module.exports = {
   },
 
   getBatteryColor: function(summary) {
-    if (summary.totalBatteryStored <= 0) {
+    const powerFrontend = this;
+    const currentStored = summary.totalBatteryStored;
+    const previousStored = powerFrontend.previousBatteryStored;
+    const colorHoldTicks = 2;
+
+    powerFrontend.previousBatteryStored = currentStored;
+
+    if (previousStored !== null && currentStored > previousStored) {
+      powerFrontend.batteryColor = Color.green;
+      powerFrontend.batteryColorTimer = colorHoldTicks;
+      return powerFrontend.batteryColor;
+    }
+
+    if (previousStored !== null && currentStored < previousStored) {
+      powerFrontend.batteryColor = Color.red;
+      powerFrontend.batteryColorTimer = colorHoldTicks;
+      return powerFrontend.batteryColor;
+    }
+
+    if (powerFrontend.batteryColorTimer > 0 && powerFrontend.batteryColor !== null) {
+      powerFrontend.batteryColorTimer -= Time.delta;
+      return powerFrontend.batteryColor;
+    }
+
+    if (currentStored <= 0) {
       return Color.gray;
-    }
-
-    if (summary.totalNet > 0 && summary.totalBatteryStored < summary.totalBatteryCapacity) {
-      return Color.green;
-    }
-
-    if (summary.totalNet < 0) {
-      return Color.red;
     }
 
     return Color.white;
