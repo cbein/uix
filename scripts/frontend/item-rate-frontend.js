@@ -11,7 +11,8 @@ module.exports = {
     iconSize: 20, //item icon size
     iconRightPadding: 8, //gap after icon
     rateTextWidth: 72, //rate text width
-    fullTextMinWidth: 28 //full text width
+    fullIndicatorWidth: 28, //full indicator column width
+    fullIndicatorSize: 14 //full indicator icon size
   },
   rateBackgroundTable: null,
   rateTable: null,
@@ -126,12 +127,19 @@ module.exports = {
       .padBottom(itemRateFrontend.scaled(config.barSpacing))
       .tooltip(itemStats.item.localizedName);
 
-    rateTable.add(itemStats.isFull ? "FULL" : "")
-      .color(Color.green)
-      .width(itemRateFrontend.scaled(config.fullTextMinWidth))
+    rateTable.table(Tex.clear, function(indicator) {
+      indicator.left();
+
+      if (itemStats.isFull) {
+        indicator.image(Icon.okSmall)
+          .color(Color.gray)
+          .size(itemRateFrontend.scaled(config.fullIndicatorSize));
+      }
+    })
+      .width(itemRateFrontend.scaled(config.fullIndicatorWidth))
       .left()
       .fillX()
-      .padLeft(itemRateFrontend.scaled(4))
+      .padLeft(itemRateFrontend.scaled(6))
       .padBottom(itemRateFrontend.scaled(config.barSpacing))
       .row();
   },
