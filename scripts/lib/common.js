@@ -15,8 +15,16 @@ module.exports = {
   },
 
   scaledColor: function(value, low, high, zeroColor) {
+    if (value >= high) {
+      return Color.cyan;
+    }
+
+    if (value >= low) {
+      return Color.green;
+    }
+
     if (value > 0) {
-      return this.lerpRange(value, low, high, Color.white, Color.green, Color.cyan, 2);
+      return Color.white;
     }
 
     if (value < 0) {
