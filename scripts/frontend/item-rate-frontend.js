@@ -11,9 +11,6 @@ module.exports = {
     iconSize: 20, //item icon size
     iconRightPadding: 8, //gap after icon
     rateTextWidth: 72, //rate text width
-    modeButtonWidth: 48, //mode button width
-    modeButtonHeight: 28, //mode button height
-    modeButtonSpacing: 4, //gap between buttons
     fullTextMinWidth: 28 //full text width
   },
   rateBackgroundTable: null,
@@ -21,7 +18,6 @@ module.exports = {
   barsBackgroundTable: null,
   barsTable: null,
   itemRateBackend: null,
-  rateMode: "second",
 
   start: function(itemRateBackend) {
     const itemRateFrontend = this;
@@ -38,7 +34,7 @@ module.exports = {
     itemRateFrontend.rateBackgroundTable = new Table();
     itemRateFrontend.rateBackgroundTable.setFillParent(true);
     itemRateFrontend.rateBackgroundTable.top().left();
-    itemRateFrontend.rateBackgroundTable.marginTop(itemRateFrontend.scaled(itemRateFrontend.config.topMargin + itemRateFrontend.config.modeButtonHeight + itemRateFrontend.config.barSpacing));
+    itemRateFrontend.rateBackgroundTable.marginTop(itemRateFrontend.scaled(itemRateFrontend.config.topMargin + itemRateFrontend.config.barHeight + itemRateFrontend.config.barSpacing));
     itemRateFrontend.barsBackgroundTable = new Table();
     itemRateFrontend.rateBackgroundTable.add(itemRateFrontend.barsBackgroundTable)
       .left()
@@ -51,7 +47,14 @@ module.exports = {
     itemRateFrontend.rateTable.marginLeft(itemRateFrontend.scaled(itemRateFrontend.config.leftMargin));
     itemRateFrontend.rateTable.marginTop(itemRateFrontend.scaled(itemRateFrontend.config.topMargin));
 
-    itemRateFrontend.addRateModeButtons(itemRateFrontend.rateTable);
+    itemRateFrontend.rateTable.add("Rates")
+      .color(Color.white)
+      .left()
+      .width(itemRateFrontend.scaled(itemRateFrontend.getRateCardContentWidth()))
+      .height(itemRateFrontend.scaled(itemRateFrontend.config.barHeight))
+      .padBottom(itemRateFrontend.scaled(itemRateFrontend.config.barSpacing))
+      .row();
+
     itemRateFrontend.barsTable = new Table();
     itemRateFrontend.rateTable.add(itemRateFrontend.barsTable)
       .left()
@@ -85,29 +88,6 @@ module.exports = {
       itemRateFrontend.addRateBackground(barsBackgroundTable);
       itemRateFrontend.addRateBar(barsTable, itemRateBackend.itemStats[i]);
     }
-  },
-
-  addRateModeButtons: function(rateTable) {
-    const itemRateFrontend = this;
-    const config = itemRateFrontend.config;
-
-    rateTable.table(Tex.clear, function(buttonTable) {
-      buttonTable.button("/s", function() {
-        itemRateFrontend.rateMode = "second";
-      })
-        .width(itemRateFrontend.scaled(config.modeButtonWidth))
-        .height(itemRateFrontend.scaled(config.modeButtonHeight))
-        .padRight(itemRateFrontend.scaled(config.modeButtonSpacing));
-
-      buttonTable.button("/m", function() {
-        itemRateFrontend.rateMode = "minute";
-      })
-        .width(itemRateFrontend.scaled(config.modeButtonWidth))
-        .height(itemRateFrontend.scaled(config.modeButtonHeight));
-    })
-      .padBottom(itemRateFrontend.scaled(config.barSpacing))
-      .left()
-      .row();
   },
 
   addRateBar: function(rateTable, itemStats) {
@@ -183,17 +163,8 @@ module.exports = {
     }
 
     const rate = this.getDisplayRate(itemStats);
-    const thresholdScale = this.getThresholdScale();
 
-    return Common.scaledColor(rate, 10 * thresholdScale, 100 * thresholdScale, Color.gray);
-  },
-
-  getThresholdScale: function() {
-    if (this.rateMode === "minute") {
-      return 60;
-    }
-
-    return 1;
+    return Common.scaledColor(rate, 10, 100, Color.gray);
   },
 
   formatRate: function(itemStats) {
@@ -208,18 +179,10 @@ module.exports = {
   },
 
   getDisplayRate: function(itemStats) {
-    if (this.rateMode === "minute") {
-      return itemStats.netRatePerMinute;
-    }
-
     return itemStats.netRatePerSecond;
   },
 
   getRateUnit: function() {
-    if (this.rateMode === "minute") {
-      return "/m";
-    }
-
     return "/s";
   }
 };

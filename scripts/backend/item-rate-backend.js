@@ -9,8 +9,7 @@ module.exports = {
   previousStoredAmounts: {},
   previousSpoofedAmounts: {},
   rateHistory: {},
-  h1LengthSeconds: 0.5, //seconds of history used for /s display
-  h2LengthSeconds: 1, //seconds of history used for /m display
+  historyLengthSeconds: 0.5, //seconds of history used for /s display
   itemsSeenInCore: {},
   itemStats: [],
 
@@ -86,16 +85,14 @@ module.exports = {
       currentStoredAmounts[item.name] = amount;
       currentSpoofedAmounts[item.name] = spoofedAmount;
 
-      //the rate history is used to smoothing where the second and minute windows are used for the per 
-      //second and per minute displays, respectively.
-      itemRateBackend.rateHistory[item.name] = {h1: [], h2: []};
+      //the rate history is used to smooth the per second display.
+      itemRateBackend.rateHistory[item.name] = [];
       
       itemStats.push({
         item: item,
         amount: amount,
         isFull: amount >= itemCapacity,
-        netRatePerSecond: 0,
-        netRatePerMinute: 0
+        netRatePerSecond: 0
       });
     });
 
@@ -142,7 +139,7 @@ module.exports = {
       const netRate = (amount - previousAmount) / elapsedSeconds;
       const incomingRate = (spoofedAmount - previousSpoofedAmount) / elapsedSeconds;
       const rate = isFull ? incomingRate : netRate;
-      const averageRates = itemRateBackend.sample(item.name, rate);
+      const averageRate = itemRateBackend.sample(item.name, rate);
 
       currentStoredAmounts[item.name] = amount;
       currentSpoofedAmounts[item.name] = spoofedAmount;
@@ -151,8 +148,7 @@ module.exports = {
         item: item,
         amount: amount,
         isFull: isFull,
-        netRatePerSecond: averageRates.perSecond,
-        netRatePerMinute: averageRates.perMinute
+        netRatePerSecond: averageRate
       });
     });
 
@@ -170,7 +166,7 @@ module.exports = {
     let rateHistory = itemRateBackend.rateHistory[itemName];
 
     if (rateHistory === undefined) {
-      rateHistory = {h1: [], h2: []};
+      rateHistory = [];
       itemRateBackend.rateHistory[itemName] = rateHistory;
     }
 
@@ -178,23 +174,14 @@ module.exports = {
     const lengthToSamples = function(lengthSeconds) {
       return Math.max(1, Math.round(lengthSeconds * itemRateBackend.ticksPerSecond / itemRateBackend.ticksPerSample));
     };
-    const h1LengthSamples = lengthToSamples(itemRateBackend.h1LengthSeconds);
-    const h2LengthSamples = lengthToSamples(itemRateBackend.h2LengthSeconds);
+    const historyLengthSamples = lengthToSamples(itemRateBackend.historyLengthSeconds);
 
-    rateHistory.h1.push(rate); //h1 is reported as per second in ui
-    rateHistory.h2.push(rate * 60); //h2 is reported as per minute in ui
+    rateHistory.push(rate);
 
-    if (rateHistory.h1.length > h1LengthSamples) {
-      rateHistory.h1.shift(); //removes first element of array
+    if (rateHistory.length > historyLengthSamples) {
+      rateHistory.shift(); //removes first element of array
     }
 
-    if (rateHistory.h2.length > h2LengthSamples) {
-      rateHistory.h2.shift(); //removes first element of array
-    }
-
-    return {
-      perSecond: Common.average(rateHistory.h1),
-      perMinute: Common.average(rateHistory.h2)
-    };
+    return Common.average(rateHistory);
   }
 };
