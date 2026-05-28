@@ -94,6 +94,8 @@ module.exports = {
   addRateBar: function(rateTable, itemStats) {
     const itemRateFrontend = this;
     const config = itemRateFrontend.config;
+    const accentWidth = 4;
+    const rateColor = itemRateFrontend.getRateColor(itemStats);
 
     rateTable.add(itemStats.isFull ? "FULL" : "")
       .color(Color.green)
@@ -102,13 +104,19 @@ module.exports = {
       .padRight(itemRateFrontend.scaled(config.iconRightPadding))
       .padBottom(itemRateFrontend.scaled(config.barSpacing));
 
-    rateTable.table(Tex.button, function(bar) {
+    rateTable.table(Tex.clear, function(bar) {
+      bar.image(Tex.whiteui)
+        .color(rateColor)
+        .width(itemRateFrontend.scaled(accentWidth))
+        .height(itemRateFrontend.scaled(config.barHeight))
+        .padRight(itemRateFrontend.scaled(config.iconRightPadding));
+
       bar.image(itemStats.item.uiIcon)
         .size(itemRateFrontend.scaled(config.iconSize))
         .padRight(itemRateFrontend.scaled(config.iconRightPadding));
 
       bar.add(itemRateFrontend.formatRate(itemStats))
-        .color(itemRateFrontend.getRateColor(itemStats))
+        .color(rateColor)
         .minWidth(itemRateFrontend.scaled(config.rateTextMinWidth))
         .right();
     })
