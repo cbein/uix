@@ -10,11 +10,11 @@ module.exports = {
     barSpacing: 4, //gap between bars
     iconSize: 24, //item icon size
     iconRightPadding: 8, //gap after icon
-    rateTextMinWidth: 64, //rate text width
+    rateTextWidth: 64, //rate text width
     modeButtonWidth: 48, //mode button width
     modeButtonHeight: 28, //mode button height
     modeButtonSpacing: 4, //gap between buttons
-    fullTextMinWidth: 48 //full text width
+    fullTextMinWidth: 36 //full text width
   },
   rateTable: null,
   barsTable: null,
@@ -101,7 +101,6 @@ module.exports = {
       .color(Color.green)
       .width(itemRateFrontend.scaled(config.fullTextMinWidth))
       .right()
-      .padRight(itemRateFrontend.scaled(config.iconRightPadding))
       .padBottom(itemRateFrontend.scaled(config.barSpacing));
 
     rateTable.table(Tex.clear, function(bar) {
@@ -117,7 +116,7 @@ module.exports = {
 
       bar.add(itemRateFrontend.formatRate(itemStats))
         .color(rateColor)
-        .minWidth(itemRateFrontend.scaled(config.rateTextMinWidth))
+        .width(itemRateFrontend.scaled(config.rateTextWidth))
         .right();
     })
       .height(itemRateFrontend.scaled(config.barHeight))
@@ -151,17 +150,13 @@ module.exports = {
 
   formatRate: function(itemStats) {
     const displayRate = this.getDisplayRate(itemStats);
-    let rounded = Math.round(displayRate);
+    const formatted = Common.formatNumber(displayRate, true);
 
-    if (displayRate > -1 && displayRate < 1 && displayRate !== 0) {
-      rounded = Math.round(displayRate * 10) / 10;
+    if (displayRate > 0) {
+      return "+" + formatted + this.getRateUnit();
     }
 
-    if (rounded > 0) {
-      return "+" + rounded + this.getRateUnit();
-    }
-
-    return rounded + this.getRateUnit();
+    return formatted + this.getRateUnit();
   },
 
   getDisplayRate: function(itemStats) {

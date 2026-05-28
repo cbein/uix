@@ -67,7 +67,7 @@ module.exports = {
         .padBottom(powerFrontend.scaled(4))
         .row();
 
-      powerFrontend.addRow(panel, "Networks", summary.networkCount, Color.lightGray);
+      powerFrontend.addRow(panel, "Networks", Common.formatNumber(summary.networkCount, false), Color.lightGray);
       powerFrontend.addPowerRow(panel, "Production", summary.totalProduction, Color.green);
       powerFrontend.addPowerRow(panel, "Consumption", summary.totalConsumption, Color.orange);
       powerFrontend.addPowerRow(panel, "Net", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
@@ -133,26 +133,24 @@ module.exports = {
 
   formatPower: function(value) {
     const perSecond = value * this.config.powerUnitsPerSecond;
-    const rounded = Math.round(perSecond);
-    const sign = rounded < 0 ? "-" : "";
-    const amount = Math.abs(rounded);
+    const formatted = Common.formatNumber(perSecond, false);
 
-    if (amount >= 1000000) {
+    if (formatted.indexOf("mil") >= 0) {
       return {
-        amount: sign + Math.round(amount / 1000000),
+        amount: formatted.replace("mil", ""),
         suffix: "mil/s"
       };
     }
 
-    if (amount >= 1000) {
+    if (formatted.indexOf("k") >= 0) {
       return {
-        amount: sign + Math.round(amount / 1000),
+        amount: formatted.replace("k", ""),
         suffix: "k/s"
       };
     }
 
     return {
-      amount: sign + amount,
+      amount: formatted,
       suffix: "/s"
     };
   },

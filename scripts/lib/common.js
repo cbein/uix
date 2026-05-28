@@ -40,5 +40,26 @@ module.exports = {
     }
 
     return midColor.cpy().lerp(endColor, Math.min((value - low) / (high - low), 1));
+  },
+
+  formatNumber: function(value, useSmallDecimal) {
+    let rounded = Math.round(value);
+
+    if (useSmallDecimal && value > -1 && value < 1 && value !== 0) {
+      rounded = Math.round(value * 10) / 10;
+    }
+
+    const sign = rounded < 0 ? "-" : "";
+    const amount = Math.abs(rounded);
+
+    if (amount >= 1000000) {
+      return sign + Math.round(amount / 1000000) + "mil";
+    }
+
+    if (amount >= 1000) {
+      return sign + Math.round(amount / 1000) + "k";
+    }
+
+    return "" + rounded;
   }
 };
