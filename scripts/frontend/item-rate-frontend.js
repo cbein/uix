@@ -6,9 +6,9 @@ module.exports = {
     scale: 1, //size multiplier
     leftMargin: 16, //offset from left
     topMargin: 448, //offset from top
-    barHeight: 36, //rate bar height
+    barHeight: 24, //rate bar height
     barSpacing: 4, //gap between bars
-    iconSize: 24, //item icon size
+    iconSize: 20, //item icon size
     iconRightPadding: 8, //gap after icon
     rateTextWidth: 64, //rate text width
     modeButtonWidth: 48, //mode button width
