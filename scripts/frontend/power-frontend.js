@@ -12,6 +12,7 @@ module.exports = {
     rowHeight: 24, //row height
     powerUnitsPerSecond: 60 //ticks to seconds
   },
+  powerBackgroundTable: null,
   powerBackend: null,
   powerTable: null,
 
@@ -28,6 +29,12 @@ module.exports = {
     const powerFrontend = this;
     const config = powerFrontend.config;
 
+    powerFrontend.powerBackgroundTable = new Table();
+    powerFrontend.powerBackgroundTable.setFillParent(true);
+    powerFrontend.powerBackgroundTable.top().left();
+    powerFrontend.powerBackgroundTable.marginTop(powerFrontend.scaled(config.topMargin + config.rowHeight + 4));
+    Vars.ui.hudGroup.addChild(powerFrontend.powerBackgroundTable);
+
     powerFrontend.powerTable = new Table();
     powerFrontend.powerTable.setFillParent(true);
     powerFrontend.powerTable.top().left();
@@ -42,9 +49,11 @@ module.exports = {
 
   rebuild: function() {
     const powerFrontend = this;
+    const powerBackgroundTable = powerFrontend.powerBackgroundTable;
     const powerTable = powerFrontend.powerTable;
     const summary = powerFrontend.powerBackend.powerSummary;
 
+    powerBackgroundTable.clear();
     powerTable.clear();
 
     if (!Vars.state.isGame() || summary.networkCount === 0) {
@@ -55,14 +64,21 @@ module.exports = {
       .color(Color.white)
       .left()
       .width(powerFrontend.scaled(powerFrontend.config.panelWidth))
+      .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
       .padBottom(powerFrontend.scaled(4))
       .row();
 
+    powerFrontend.addRowBackground(powerBackgroundTable);
     powerFrontend.addRow(powerTable, "Networks", Common.formatNumber(summary.networkCount, false), Color.lightGray);
+    powerFrontend.addRowBackground(powerBackgroundTable);
     powerFrontend.addPowerRow(powerTable, "Production", summary.totalProduction, Color.green);
+    powerFrontend.addRowBackground(powerBackgroundTable);
     powerFrontend.addPowerRow(powerTable, "Consumption", summary.totalConsumption, Color.orange);
+    powerFrontend.addRowBackground(powerBackgroundTable);
     powerFrontend.addPowerRow(powerTable, "Net", summary.totalNet, powerFrontend.getNetColor(summary.totalNet));
+    powerFrontend.addRowBackground(powerBackgroundTable);
     powerFrontend.addRow(powerTable, "Battery", powerFrontend.formatBattery(summary), Color.lightGray);
+    powerFrontend.addRowBackground(powerBackgroundTable);
     powerFrontend.addRow(powerTable, "Satisfaction", Math.round(summary.totalSatisfaction * 100) + "%", Color.lightGray);
   },
 
@@ -102,7 +118,7 @@ module.exports = {
 
   addCardRow: function(powerTable, label, accentColor, addValue) {
     const powerFrontend = this;
-    const accentWidth = 4;
+    const accentWidth = powerFrontend.getAccentWidth();
     const rowSpacing = 4;
 
     powerTable.table(Tex.clear, function(row) {
@@ -124,6 +140,22 @@ module.exports = {
       .width(powerFrontend.scaled(powerFrontend.config.panelWidth))
       .padBottom(powerFrontend.scaled(rowSpacing))
       .row();
+  },
+
+  addRowBackground: function(backgroundTable) {
+    const powerFrontend = this;
+    const rowSpacing = 4;
+
+    backgroundTable.image(Tex.whiteui)
+      .color(Pal.darkishGray)
+      .height(powerFrontend.scaled(powerFrontend.config.rowHeight))
+      .width(powerFrontend.scaled(powerFrontend.config.leftMargin + powerFrontend.config.panelWidth))
+      .padBottom(powerFrontend.scaled(rowSpacing))
+      .row();
+  },
+
+  getAccentWidth: function() {
+    return 4;
   },
 
   scaled: function(value) {

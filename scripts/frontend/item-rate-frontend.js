@@ -4,8 +4,8 @@ const Common = require("lib/common");
 module.exports = {
   config: {
     scale: 1, //size multiplier
-    topMargin: 240, //offset from top
-    barWidth: 168, //rate bar width
+    leftMargin: 16, //offset from left
+    topMargin: 448, //offset from top
     barHeight: 36, //rate bar height
     barSpacing: 4, //gap between bars
     iconSize: 24, //item icon size
@@ -14,9 +14,11 @@ module.exports = {
     modeButtonWidth: 48, //mode button width
     modeButtonHeight: 28, //mode button height
     modeButtonSpacing: 4, //gap between buttons
-    fullTextMinWidth: 36 //full text width
+    fullTextMinWidth: 28 //full text width
   },
+  rateBackgroundTable: null,
   rateTable: null,
+  barsBackgroundTable: null,
   barsTable: null,
   itemRateBackend: null,
   rateMode: "second",
@@ -33,14 +35,27 @@ module.exports = {
   build: function() {
     const itemRateFrontend = this;
 
+    itemRateFrontend.rateBackgroundTable = new Table();
+    itemRateFrontend.rateBackgroundTable.setFillParent(true);
+    itemRateFrontend.rateBackgroundTable.top().left();
+    itemRateFrontend.rateBackgroundTable.marginTop(itemRateFrontend.scaled(itemRateFrontend.config.topMargin + itemRateFrontend.config.modeButtonHeight + itemRateFrontend.config.barSpacing));
+    itemRateFrontend.barsBackgroundTable = new Table();
+    itemRateFrontend.rateBackgroundTable.add(itemRateFrontend.barsBackgroundTable)
+      .left()
+      .row();
+    Vars.ui.hudGroup.addChild(itemRateFrontend.rateBackgroundTable);
+
     itemRateFrontend.rateTable = new Table();
     itemRateFrontend.rateTable.setFillParent(true);
-    itemRateFrontend.rateTable.top().right();
+    itemRateFrontend.rateTable.top().left();
+    itemRateFrontend.rateTable.marginLeft(itemRateFrontend.scaled(itemRateFrontend.config.leftMargin));
     itemRateFrontend.rateTable.marginTop(itemRateFrontend.scaled(itemRateFrontend.config.topMargin));
 
     itemRateFrontend.addRateModeButtons(itemRateFrontend.rateTable);
     itemRateFrontend.barsTable = new Table();
-    itemRateFrontend.rateTable.add(itemRateFrontend.barsTable).row();
+    itemRateFrontend.rateTable.add(itemRateFrontend.barsTable)
+      .left()
+      .row();
 
     Vars.ui.hudGroup.addChild(itemRateFrontend.rateTable);
 
@@ -51,9 +66,11 @@ module.exports = {
 
   rebuild: function() {
     const itemRateFrontend = this;
+    const barsBackgroundTable = itemRateFrontend.barsBackgroundTable;
     const barsTable = itemRateFrontend.barsTable;
     const itemRateBackend = itemRateFrontend.itemRateBackend;
 
+    barsBackgroundTable.clear();
     barsTable.clear();
 
     if (!Vars.state.isGame()) {
@@ -65,6 +82,7 @@ module.exports = {
     }
 
     for (let i = 0; i < itemRateBackend.itemStats.length; i++) {
+      itemRateFrontend.addRateBackground(barsBackgroundTable);
       itemRateFrontend.addRateBar(barsTable, itemRateBackend.itemStats[i]);
     }
   },
@@ -88,27 +106,18 @@ module.exports = {
         .height(itemRateFrontend.scaled(config.modeButtonHeight));
     })
       .padBottom(itemRateFrontend.scaled(config.barSpacing))
+      .left()
       .row();
   },
 
   addRateBar: function(rateTable, itemStats) {
     const itemRateFrontend = this;
     const config = itemRateFrontend.config;
-    const accentWidth = 4;
+    const accentWidth = itemRateFrontend.getAccentWidth();
     const rateColor = itemRateFrontend.getRateColor(itemStats);
 
-    rateTable.add(itemStats.isFull ? "FULL" : "")
-      .color(Color.green)
-      .width(itemRateFrontend.scaled(config.fullTextMinWidth))
-      .right()
-      .padBottom(itemRateFrontend.scaled(config.barSpacing));
-
     rateTable.table(Tex.clear, function(bar) {
-      bar.image(Tex.whiteui)
-        .color(rateColor)
-        .width(itemRateFrontend.scaled(accentWidth))
-        .height(itemRateFrontend.scaled(config.barHeight))
-        .padRight(itemRateFrontend.scaled(config.iconRightPadding));
+      bar.left();
 
       bar.image(itemStats.item.uiIcon)
         .size(itemRateFrontend.scaled(config.iconSize))
@@ -118,11 +127,51 @@ module.exports = {
         .color(rateColor)
         .width(itemRateFrontend.scaled(config.rateTextWidth))
         .right();
+
+      bar.image(Tex.whiteui)
+        .color(rateColor)
+        .width(itemRateFrontend.scaled(accentWidth))
+        .height(itemRateFrontend.scaled(config.barHeight))
+        .padLeft(itemRateFrontend.scaled(config.iconRightPadding));
     })
       .height(itemRateFrontend.scaled(config.barHeight))
-      .width(itemRateFrontend.scaled(config.barWidth))
+      .width(itemRateFrontend.scaled(itemRateFrontend.getRateCardContentWidth()))
+      .padBottom(itemRateFrontend.scaled(config.barSpacing));
+
+    rateTable.add(itemStats.isFull ? "FULL" : "")
+      .color(Color.green)
+      .width(itemRateFrontend.scaled(config.fullTextMinWidth))
+      .left()
+      .fillX()
+      .padLeft(itemRateFrontend.scaled(4))
       .padBottom(itemRateFrontend.scaled(config.barSpacing))
       .row();
+  },
+
+  addRateBackground: function(backgroundTable) {
+    const itemRateFrontend = this;
+    const config = itemRateFrontend.config;
+
+    backgroundTable.image(Tex.whiteui)
+      .color(Pal.darkishGray)
+      .height(itemRateFrontend.scaled(config.barHeight))
+      .width(itemRateFrontend.scaled(config.leftMargin + itemRateFrontend.getRateCardContentWidth()))
+      .padBottom(itemRateFrontend.scaled(config.barSpacing))
+      .row();
+  },
+
+  getAccentWidth: function() {
+    return 4;
+  },
+
+  getRateCardContentWidth: function() {
+    const config = this.config;
+
+    return config.iconSize
+      + config.iconRightPadding
+      + config.rateTextWidth
+      + config.iconRightPadding
+      + this.getAccentWidth();
   },
 
   scaled: function(value) {
