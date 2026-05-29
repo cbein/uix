@@ -60,7 +60,7 @@ module.exports = {
     hudToolPanel.panel.marginRight(hudToolPanel.config.rightMargin);
     hudToolPanel.panel.marginBottom(hudToolPanel.config.bottomMargin);
     hudToolPanel.panel.visibility = function() {
-      return Vars.state.isGame();
+      return hudToolPanel.shouldShow();
     };
 
     hudToolPanel.panel.table(Tex.clear, function(section) {
@@ -75,7 +75,7 @@ module.exports = {
     hudToolPanel.topBorder.marginRight(hudToolPanel.config.rightMargin);
     hudToolPanel.topBorder.marginBottom(hudToolPanel.config.bottomMargin + hudToolPanel.config.buttonSize * hudToolPanel.config.rowCount);
     hudToolPanel.topBorder.visibility = function() {
-      return Vars.state.isGame();
+      return hudToolPanel.shouldShow();
     };
     hudToolPanel.topBorder.image(Tex.whiteui)
       .color(Pal.gray)
@@ -172,6 +172,16 @@ module.exports = {
 
     button.setChecked(enabled);
     image.setColor(enabled ? tool.color : Color.gray);
+  },
+
+  shouldShow: function() {
+    return Vars.state.isGame() && !this.isCommandMode();
+  },
+
+  isCommandMode: function() {
+    return Vars.control != null
+      && Vars.control.input != null
+      && Vars.control.input.commandMode;
   },
 
   getIcon: function(tool) {
