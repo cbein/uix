@@ -19,6 +19,7 @@ module.exports = {
   previousBatteryStored: null,
   batteryColor: null,
   batteryColorTimer: 0,
+  settingsKey: "uix-power-panel",
 
   start: function(powerBackend) {
     const powerFrontend = this;
@@ -36,12 +37,18 @@ module.exports = {
     powerFrontend.powerBackgroundTable = new Table();
     powerFrontend.powerBackgroundTable.setFillParent(true);
     powerFrontend.powerBackgroundTable.top().left();
+    powerFrontend.powerBackgroundTable.visibility = function() {
+      return powerFrontend.isEnabled();
+    };
     powerFrontend.powerBackgroundTable.marginTop(powerFrontend.scaled(config.topMargin + config.rowHeight + config.rowSpacing));
     Vars.ui.hudGroup.addChild(powerFrontend.powerBackgroundTable);
 
     powerFrontend.powerTable = new Table();
     powerFrontend.powerTable.setFillParent(true);
     powerFrontend.powerTable.top().left();
+    powerFrontend.powerTable.visibility = function() {
+      return powerFrontend.isEnabled();
+    };
     powerFrontend.powerTable.marginLeft(powerFrontend.scaled(config.leftMargin));
     powerFrontend.powerTable.marginTop(powerFrontend.scaled(config.topMargin));
     Vars.ui.hudGroup.addChild(powerFrontend.powerTable);
@@ -57,7 +64,7 @@ module.exports = {
     const powerTable = powerFrontend.powerTable;
     const summary = powerFrontend.powerBackend.powerSummary;
 
-    if (!Vars.state.isGame() || summary.networkCount === 0) {
+    if (!Vars.state.isGame() || !powerFrontend.isEnabled() || summary.networkCount === 0) {
       powerBackgroundTable.clear();
       powerTable.clear();
       powerFrontend.previousBatteryStored = null;
@@ -237,6 +244,10 @@ module.exports = {
 
   scaled: function(value) {
     return value * this.config.scale;
+  },
+
+  isEnabled: function() {
+    return Core.settings.getBool(this.settingsKey, true);
   },
 
   formatPower: function(value) {

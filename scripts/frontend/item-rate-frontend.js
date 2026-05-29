@@ -19,6 +19,7 @@ module.exports = {
   barsBackgroundTable: null,
   barsTable: null,
   itemRateBackend: null,
+  settingsKey: "uix-resource-rate-panel",
 
   start: function(itemRateBackend) {
     const itemRateFrontend = this;
@@ -35,6 +36,9 @@ module.exports = {
     itemRateFrontend.rateBackgroundTable = new Table();
     itemRateFrontend.rateBackgroundTable.setFillParent(true);
     itemRateFrontend.rateBackgroundTable.top().left();
+    itemRateFrontend.rateBackgroundTable.visibility = function() {
+      return itemRateFrontend.isEnabled();
+    };
     itemRateFrontend.rateBackgroundTable.marginTop(itemRateFrontend.scaled(itemRateFrontend.config.topMargin + itemRateFrontend.config.barHeight + itemRateFrontend.config.barSpacing));
     itemRateFrontend.barsBackgroundTable = new Table();
     itemRateFrontend.rateBackgroundTable.add(itemRateFrontend.barsBackgroundTable)
@@ -45,6 +49,9 @@ module.exports = {
     itemRateFrontend.rateTable = new Table();
     itemRateFrontend.rateTable.setFillParent(true);
     itemRateFrontend.rateTable.top().left();
+    itemRateFrontend.rateTable.visibility = function() {
+      return itemRateFrontend.isEnabled();
+    };
     itemRateFrontend.rateTable.marginLeft(itemRateFrontend.scaled(itemRateFrontend.config.leftMargin));
     itemRateFrontend.rateTable.marginTop(itemRateFrontend.scaled(itemRateFrontend.config.topMargin));
 
@@ -74,7 +81,7 @@ module.exports = {
     const barsTable = itemRateFrontend.barsTable;
     const itemRateBackend = itemRateFrontend.itemRateBackend;
 
-    if (!Vars.state.isGame()) {
+    if (!Vars.state.isGame() || !itemRateFrontend.isEnabled()) {
       barsBackgroundTable.clear();
       barsTable.clear();
       return;
@@ -171,6 +178,10 @@ module.exports = {
 
   scaled: function(value) {
     return value * this.config.scale;
+  },
+
+  isEnabled: function() {
+    return Core.settings.getBool(this.settingsKey, true);
   },
 
   getRateColor: function(itemStats) {
