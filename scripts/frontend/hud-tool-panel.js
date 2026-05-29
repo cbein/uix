@@ -1,14 +1,14 @@
 module.exports = {
   config: {
     rightMargin: 314,
-    bottomMargin: -5,
-    buttonSize: 46,
+    bottomMargin: 0,
+    buttonSize: 50,
     borderSize: 4,
     rowCount: 5,
-    iconSize: 22,
-    extraHeight: 25
+    iconSize: 24
   },
   panel: null,
+  topBorder: null,
   rows: [],
   tools: [
     {
@@ -22,6 +22,24 @@ module.exports = {
       iconName: "liquid",
       tooltip: "Liquid overlay",
       color: Color.blue
+    },
+    {
+      key: "uix-graph-tool",
+      iconName: "chartBar",
+      tooltip: "Graph",
+      color: Color.white
+    },
+    {
+      key: "uix-schematic-tool",
+      iconName: "fileText",
+      tooltip: "Schematic",
+      color: Color.white
+    },
+    {
+      key: "uix-info-tool",
+      iconName: "infoCircle",
+      tooltip: "Information",
+      color: Color.white
     }
   ],
 
@@ -51,6 +69,20 @@ module.exports = {
 
     Vars.ui.hudGroup.addChild(hudToolPanel.panel);
 
+    hudToolPanel.topBorder = new Table();
+    hudToolPanel.topBorder.setFillParent(true);
+    hudToolPanel.topBorder.bottom().right();
+    hudToolPanel.topBorder.marginRight(hudToolPanel.config.rightMargin);
+    hudToolPanel.topBorder.marginBottom(hudToolPanel.config.bottomMargin + hudToolPanel.config.buttonSize * hudToolPanel.config.rowCount);
+    hudToolPanel.topBorder.visibility = function() {
+      return Vars.state.isGame();
+    };
+    hudToolPanel.topBorder.image(Tex.whiteui)
+      .color(Pal.gray)
+      .width(hudToolPanel.config.buttonSize + hudToolPanel.config.borderSize)
+      .height(hudToolPanel.config.borderSize);
+    Vars.ui.hudGroup.addChild(hudToolPanel.topBorder);
+
     Events.run(Trigger.update, function() {
       hudToolPanel.updateButtons();
     });
@@ -59,59 +91,58 @@ module.exports = {
   buildSection: function(section) {
     const hudToolPanel = this;
 
-    section.table(Tex.clear, function(row) {
-      row.image(Tex.whiteui)
-        .color(Pal.gray)
-        .height(hudToolPanel.config.borderSize)
-        .growX();
-    })
-      .width(hudToolPanel.config.buttonSize + hudToolPanel.config.borderSize)
-      .height(hudToolPanel.config.borderSize)
-      .row();
-
+    section.bottom();
     section.table(Tex.clear, function(body) {
       body.left();
       body.image(Tex.whiteui)
         .color(Pal.gray)
         .width(hudToolPanel.config.borderSize)
-        .height(hudToolPanel.getSectionHeight());
+        .height(hudToolPanel.config.buttonSize * hudToolPanel.config.rowCount);
 
       body.table(Styles.black6, function(rows) {
-        rows.top();
-        for (let i = 0; i < hudToolPanel.config.rowCount; i++) {
-          if (i < hudToolPanel.tools.length) {
-            hudToolPanel.addToolButton(rows, hudToolPanel.tools[i]);
-          } else {
-            hudToolPanel.addEmptySlot(rows);
-          }
-        }
+        hudToolPanel.buildRows(rows);
       })
         .width(hudToolPanel.config.buttonSize)
-        .height(hudToolPanel.getSectionHeight());
+        .height(hudToolPanel.config.buttonSize * hudToolPanel.config.rowCount);
     });
+  },
+
+  buildRows: function(section) {
+    const hudToolPanel = this;
+
+    section.defaults().size(hudToolPanel.config.buttonSize);
+    for (let i = 0; i < hudToolPanel.config.rowCount; i++) {
+      if (i < hudToolPanel.tools.length) {
+        hudToolPanel.addToolButton(section, hudToolPanel.tools[i]);
+      } else {
+        hudToolPanel.addEmptySlot(section);
+      }
+    }
   },
 
   addToolButton: function(table, tool) {
     const hudToolPanel = this;
-    const row = new Table(Tex.clear);
-    const image = row.image(hudToolPanel.getIcon(tool))
+    let button = null;
+    let image = null;
+
+    button = new Packages.arc.scene.ui.Button(Styles.clearTogglei);
+    image = button.image(hudToolPanel.getIcon(tool))
       .size(hudToolPanel.config.iconSize)
       .get();
 
-    row.touchable = Touchable.enabled;
-    row.clicked(function() {
+    button.clicked(function() {
       const enabled = !hudToolPanel.getBool(tool.key);
       hudToolPanel.setBool(tool.key, enabled);
-      hudToolPanel.updateRow(row, tool, image);
+      hudToolPanel.updateButton(button, tool, image);
     });
 
-    table.add(row)
+    table.add(button)
       .size(hudToolPanel.config.buttonSize)
       .tooltip(tool.tooltip);
 
-    hudToolPanel.updateRow(row, tool, image);
+    hudToolPanel.updateButton(button, tool, image);
     hudToolPanel.rows.push({
-      row: row,
+      button: button,
       tool: tool,
       image: image
     });
@@ -122,7 +153,7 @@ module.exports = {
   addEmptySlot: function(table) {
     const hudToolPanel = this;
 
-    table.table(Tex.clear, function() {})
+    table.image(Styles.black6)
       .size(hudToolPanel.config.buttonSize);
 
     table.row();
@@ -132,14 +163,14 @@ module.exports = {
     const hudToolPanel = this;
 
     for (let i = 0; i < hudToolPanel.rows.length; i++) {
-      hudToolPanel.updateRow(hudToolPanel.rows[i].row, hudToolPanel.rows[i].tool, hudToolPanel.rows[i].image);
+      hudToolPanel.updateButton(hudToolPanel.rows[i].button, hudToolPanel.rows[i].tool, hudToolPanel.rows[i].image);
     }
   },
 
-  updateRow: function(row, tool, image) {
+  updateButton: function(button, tool, image) {
     const enabled = this.getBool(tool.key);
 
-    row.background(enabled ? Styles.flatDown : Tex.clear);
+    button.setChecked(enabled);
     image.setColor(enabled ? tool.color : Color.gray);
   },
 
@@ -152,11 +183,19 @@ module.exports = {
       return Icon.liquid;
     }
 
-    return Icon.grid;
-  },
+    if (tool.iconName === "chartBar") {
+      return Icon.chartBar;
+    }
 
-  getSectionHeight: function() {
-    return this.config.buttonSize * this.config.rowCount + this.config.extraHeight;
+    if (tool.iconName === "fileText") {
+      return Icon.fileText;
+    }
+
+    if (tool.iconName === "infoCircle") {
+      return Icon.infoCircle;
+    }
+
+    return Icon.grid;
   },
 
   getBool: function(key) {
