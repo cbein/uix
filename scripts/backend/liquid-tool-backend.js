@@ -78,13 +78,13 @@ module.exports = {
       ? topRightX - liquidToolBackend.config.iconSpacing * scale
       : topRightX;
     const iconSize = liquidToolBackend.config.iconSize * scale;
-    const iconRegion = Icon.liquidSmall.getRegion();
-    const iconWidth = iconRegion.width > iconRegion.height
+    const iconRegion = Icon.liquid.getRegion();
+    const iconWidth = Math.round(iconRegion.width > iconRegion.height
       ? iconSize
-      : iconSize * iconRegion.width / iconRegion.height;
-    const iconHeight = iconRegion.height > iconRegion.width
+      : iconSize * iconRegion.width / iconRegion.height);
+    const iconHeight = Math.round(iconRegion.height > iconRegion.width
       ? iconSize
-      : iconSize * iconRegion.height / iconRegion.width;
+      : iconSize * iconRegion.height / iconRegion.width);
 
     Draw.color(Color.blue);
     Draw.rect(iconRegion, iconX, iconY, iconWidth, iconHeight);
